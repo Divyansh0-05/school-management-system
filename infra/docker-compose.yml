@@ -1,0 +1,61 @@
+services:
+  db:
+    image: mongo:7.0
+    container_name: sms-mongo
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: >
+        mongosh --port 27017 --quiet --eval "
+          try {
+            var s = rs.status();
+            if (s.ok === 1 && (s.members[0].state === 1 || s.members[0].state === 2)) {
+              quit(0);
+            }
+          } catch(e) {
+            var res = rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] });
+            if (res.ok === 1) { quit(0); }
+          }
+          quit(1);
+        "
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 2s
+
+  db-test:
+    image: mongo:7.0
+    container_name: sms-mongo-test
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27018"]
+    ports:
+      - "27018:27018"
+    volumes:
+      - mongo-test-data:/data/db
+    healthcheck:
+      test: >
+        mongosh --port 27018 --quiet --eval "
+          try {
+            var s = rs.status();
+            if (s.ok === 1 && (s.members[0].state === 1 || s.members[0].state === 2)) {
+              quit(0);
+            }
+          } catch(e) {
+            var res = rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27018' }] });
+            if (res.ok === 1) { quit(0); }
+          }
+          quit(1);
+        "
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 2s
+
+volumes:
+  mongo-data:
+  mongo-test-data:
+
