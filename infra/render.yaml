@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: school-management-api
+    runtime: node
+    plan: free
+    buildCommand: npm run setup && npm run build --workspace=apps/api
+    startCommand: npm run start --workspace=apps/api
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: WEB_URL
+        sync: false
+      - key: API_URL
+        sync: false
+      - key: SCHOOL_TIMEZONE
+        value: Asia/Kolkata
+
