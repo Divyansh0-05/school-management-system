@@ -25,6 +25,8 @@ const EnvSchema = z.object({
   ATTENDANCE_EDIT_WINDOW_DAYS: z.coerce.number().default(2),
   SCHOOL_TIMEZONE: z.string().default('Asia/Kolkata'),
   ALLOW_DEMO_SEED: z.enum(['true', 'false']).default('false'),
+  AUTH_MAX_FAILED_LOGINS: z.coerce.number().default(5),
+  AUTH_LOCKOUT_MINUTES: z.coerce.number().default(15),
 });
 
 const parsed = EnvSchema.safeParse(process.env);
