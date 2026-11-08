@@ -12,6 +12,7 @@ import { getDbStatus } from './db/connection.js';
 import { NotFoundError } from './errors/appError.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { studentRouter } from './modules/students/student.routes.js';
+import { masterDataRouter } from './modules/master-data/master-data.routes.js';
 import { generateOpenApiDocument } from './docs/openapi.js';
 
 export const app = express();
@@ -74,6 +75,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiDoc));
 // API v1 Modules
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/students', studentRouter);
+app.use('/api/v1', masterDataRouter);
 
 // 404 handler for unmatched routes
 app.use((req, _res, next) => {
