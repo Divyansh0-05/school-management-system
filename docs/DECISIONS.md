@@ -85,6 +85,13 @@ This document records the architectural and design decisions made throughout the
   - Responses for invalid email, invalid password, or deactivated accounts return a uniform `401 Unauthorized` with generic detail "Invalid email or password".
 - **Consequences:** Eliminates user enumeration via response timing or error messages and defends against automated credential stuffing.
 
+## ADR-008: Phase 1B Master-Data Administration
+
+- **Status:** Accepted
+- **Date:** 2026-11-08
+- **Decision:** Admin CRUD for the Phase 1A master collections is exposed through a shared routes/controllers/services/repository module. Every mutation runs in `withTransaction`, records an audit event with the same session, and translates duplicate indexes and domain invariants into RFC 7807 `409` responses. Teacher and guardian creation creates a bcrypt cost-12 user account in that transaction.
+- **Consequences:** Pagination, sorting, search, validation, authorization, and audit behavior remain consistent across resources. Relationship-specific checks stay in the service while Mongoose access remains repository-owned.
+
 ---
 
 ## ADR-007: Append-Only Immutability for Audit Logs and Financial Ledgers
