@@ -45,12 +45,16 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Start MongoDB Replica Set
+      - name: Start MongoDB test replica set (rs0 on 27018)
         run: |
-          docker run -d --name mongo-ci -p 27017:27017 mongo:7.0 --replSet rs0 --bind_ip_all
+          docker run -d --name mongo-ci-test -p 27018:27018 mongo:7.0 \
+            --replSet rs0 --bind_ip_all --port 27018
           sleep 3
-          docker exec mongo-ci mongosh --eval 'rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] })'
-          sleep 2
+          docker exec mongo-ci-test mongosh --port 27018 --eval \
+            'rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27018" }] })'
+          sleep 3
+          docker exec mongo-ci-test mongosh --port 27018 --quiet --eval \
+            'var t=0; while(rs.status().members[0].stateStr!=="PRIMARY"&&t++<20){sleep(500)}; print("PRIMARY elected")'
 
       - name: Install dependencies
         run: npm ci
@@ -61,11 +65,11 @@ jobs:
       - name: Run Tests with Coverage
         env:
           NODE_ENV: test
-          MONGODB_URI: mongodb://localhost:27017/school_management_test?replicaSet=rs0
+          MONGODB_TEST_URI: mongodb://127.0.0.1:27018/school_management_test?replicaSet=rs0
           JWT_SECRET: test-super-secret-jwt-key-min-32-chars-long
           COOKIE_SECRET: test-cookie-secret-key-min-32-chars
           PORT: 5001
-        run: npm run test:coverage
+        run: npm run test:coverage --workspace=apps/api
 
       - name: Build applications
         run: npm run build
@@ -83,4 +87,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
-
