@@ -1,0 +1,1 @@
+export default function ForbiddenPage() { return <main className="mx-auto max-w-xl py-24 text-center"><p className="text-6xl font-bold text-teal-700">403</p><h1 className="mt-4 text-2xl font-bold">Access denied</h1><p className="mt-2 text-slate-600">Your role cannot access this area.</p><a className="mt-6 inline-block text-teal-700 underline" href="/">Return home</a></main>; }
