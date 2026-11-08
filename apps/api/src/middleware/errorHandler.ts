@@ -27,8 +27,9 @@ export function errorHandler(
     return;
   }
 
-  if (err instanceof ZodError) {
-    const errors: FieldError[] = err.errors.map((e) => ({
+  if (err instanceof ZodError || (err as { name?: string }).name === 'ZodError') {
+    const zodErrors = (err as { errors?: Array<{ path: (string | number)[]; message: string }> }).errors || [];
+    const errors: FieldError[] = zodErrors.map((e) => ({
       path: e.path.join('.'),
       message: e.message,
     }));
@@ -58,4 +59,3 @@ export function errorHandler(
 
   res.status(500).json(response);
 }
-

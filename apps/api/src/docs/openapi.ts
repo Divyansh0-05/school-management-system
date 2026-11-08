@@ -13,6 +13,8 @@ import {
   StudentQuerySchema,
   StudentResponseSchema,
   StudentDetailResponseSchema,
+  MasterQuerySchema,
+  MasterBodySchemas,
 } from '@school/shared';
 
 extendZodWithOpenApi(z);
@@ -36,6 +38,7 @@ registry.register('ChangePasswordRequest', ChangePasswordRequestSchema);
 registry.register('StudentQuery', StudentQuerySchema);
 registry.register('StudentResponse', StudentResponseSchema);
 registry.register('StudentDetailResponse', StudentDetailResponseSchema);
+registry.register('MasterQuery', MasterQuerySchema);
 
 // Register Paths
 
@@ -53,6 +56,38 @@ registry.registerPath({
     },
   },
 });
+
+for (const resource of Object.keys(MasterBodySchemas)) {
+  const schema = MasterBodySchemas[resource as keyof typeof MasterBodySchemas];
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/${resource}`,
+    summary: `List ${resource}`,
+    tags: ['Master Data'],
+    security: [{ bearerAuth: [] }],
+    request: { query: MasterQuerySchema },
+    responses: {
+      200: { description: 'Paginated resource list' },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+      403: { description: 'Administrator role required', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+    },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/${resource}`,
+    summary: `Create ${resource}`,
+    tags: ['Master Data'],
+    security: [{ bearerAuth: [] }],
+    request: { body: { content: { 'application/json': { schema } } } },
+    responses: {
+      201: { description: 'Created' },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+      403: { description: 'Administrator role required', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+      409: { description: 'Duplicate or domain conflict', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+      422: { description: 'Invalid input', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+    },
+  });
+}
 
 registry.registerPath({
   method: 'get',
@@ -245,4 +280,3 @@ export function generateOpenApiDocument() {
     ],
   });
 }
-

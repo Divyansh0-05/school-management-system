@@ -9,5 +9,6 @@ export * from './schemas/health.js';
 export * from './schemas/error.js';
 export * from './schemas/auth.js';
 export * from './schemas/student.js';
+export * from './schemas/master-data.js';
 export * from './types/common.js';
 export { z };
