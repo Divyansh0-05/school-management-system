@@ -17,7 +17,11 @@
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "docker:db:up": "docker-compose -f infra/docker-compose.yml up -d db db-test",
     "docker:db:down": "docker-compose -f infra/docker-compose.yml down",
-    "docker:db:wait": "node scripts/wait-for-mongo.mjs"
+    "docker:db:wait": "node scripts/wait-for-mongo.mjs",
+    "db:migrate": "npm run db:migrate --workspace=apps/api",
+    "db:migrate:down": "npm run db:migrate:down --workspace=apps/api",
+    "db:seed": "npm run db:seed --workspace=apps/api",
+    "db:reset": "npm run db:reset --workspace=apps/api"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
