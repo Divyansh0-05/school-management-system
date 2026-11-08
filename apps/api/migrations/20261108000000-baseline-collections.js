@@ -3,7 +3,20 @@ export const up = async (db) => {
   const ensureCollection = async (name, validator) => {
     const list = await db.listCollections({ name }).toArray();
     if (list.length === 0) {
-      await db.createCollection(name, validator ? { validator } : {});
+      try {
+        await db.createCollection(name, validator ? { validator } : {});
+      } catch (err) {
+        // NamespaceExists (code 48): collection was created between listCollections and createCollection
+        if (err.code !== 48) throw err;
+        // Fall through to collMod below
+        if (validator) {
+          try {
+            await db.command({ collMod: name, validator });
+          } catch (modErr) {
+            console.warn(`Could not set validator on ${name}:`, modErr.message);
+          }
+        }
+      }
     } else if (validator) {
       try {
         await db.command({ collMod: name, validator });
