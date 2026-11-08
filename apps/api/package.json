@@ -11,9 +11,16 @@
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:migrate": "migrate-mongo up",
+    "db:migrate:down": "migrate-mongo down",
+    "db:migrate:status": "migrate-mongo status",
+    "db:seed": "tsx src/seed/index.ts",
+    "db:reset": "tsx src/seed/reset.ts"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
+    "@faker-js/faker": "^10.6.0",
     "@school/shared": "*",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
@@ -23,10 +30,12 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
+    "migrate-mongo": "^14.0.7",
     "mongoose": "^8.10.0",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",
     "pino-pretty": "^13.0.0",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -37,6 +46,7 @@
     "@types/jsonwebtoken": "^9.0.8",
     "@types/node": "^20.17.16",
     "@types/supertest": "^6.0.2",
+    "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "@vitest/coverage-v8": "^2.1.8",
@@ -48,4 +58,3 @@
     "vitest": "^2.1.8"
   }
 }
-

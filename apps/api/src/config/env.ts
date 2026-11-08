@@ -16,7 +16,7 @@ const EnvSchema = z.object({
   API_URL: z.string().default('http://localhost:5000'),
   WEB_URL: z.string().default('http://localhost:3000'),
   MONGODB_URI: z.string().default('mongodb://localhost:27017/school_management?replicaSet=rs0'),
-  MONGODB_TEST_URI: z.string().default('mongodb://localhost:27018/school_management_test?replicaSet=rs0'),
+  MONGODB_TEST_URI: z.string().default('mongodb://127.0.0.1:27018/school_management_test?replicaSet=rs0'),
   JWT_SECRET: z.string().min(16).default('development-jwt-secret-min-16-characters-long'),
   JWT_EXPIRES_IN: z.string().default('15m'),
   REFRESH_TOKEN_SECRET: z.string().min(16).default('development-refresh-token-secret-min-16-chars'),
@@ -25,6 +25,8 @@ const EnvSchema = z.object({
   ATTENDANCE_EDIT_WINDOW_DAYS: z.coerce.number().default(2),
   SCHOOL_TIMEZONE: z.string().default('Asia/Kolkata'),
   ALLOW_DEMO_SEED: z.enum(['true', 'false']).default('false'),
+  AUTH_MAX_FAILED_LOGINS: z.coerce.number().default(5),
+  AUTH_LOCKOUT_MINUTES: z.coerce.number().default(15),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

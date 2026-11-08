@@ -27,7 +27,7 @@ A full-stack School Management System built as a modular monolith to streamline 
 This project is under active development. Below is the project phase roadmap:
 
 - [x] **Phase 0:** Bootstrap (Monorepo, Docker Compose MongoDB replica set, Express & Next.js skeletons, CI)
-- [ ] **Phase 1:** Data Model, Auth, RBAC, Audit, and Master Data
+- [ ] **Phase 1:** Data Model, Auth, RBAC, Audit, and Master Data (Part 1A: Data model, Auth, Scoping, and Audit complete; Part 1B: Master data CRUD and Admin UI next)
 - [ ] **Phase 2:** Attendance Management & Acceptance Tests (A1, A2)
 - [ ] **Phase 3:** Exams, Grading Engine & Report Cards (A3)
 - [ ] **Phase 4:** Fees, Invoices, Append-Only Ledger & Payments (A5)
@@ -49,12 +49,39 @@ npm run docker:db:up
 # 3. Install dependencies and build shared packages
 npm run setup
 
-# 4. Run test suites (unit and integration)
+# 4. Apply database migrations ($jsonSchema validators and compound indexes)
+npm run db:migrate
+
+# 5. Seed database with deterministic demo dataset
+npm run db:seed
+
+# 6. Run test suites (unit and integration tests against real replica set)
 npm run test
 
-# 5. Start development servers concurrently (API on :5000, Web on :3000)
+# 7. Start development servers concurrently (API on :5000, Web on :3000)
 npm run dev
+
+# (Optional) Reset database: drops collections, re-runs migrations and re-seeds
+npm run db:reset
 ```
+
+### Interactive API Documentation (Swagger / OpenAPI)
+
+Once the backend is running, the interactive OpenAPI documentation is accessible at:
+- **Swagger UI:** [http://localhost:5000/api/docs](http://localhost:5000/api/docs)
+- **OpenAPI 3.1 JSON Spec:** `docs/openapi.json`
+
+### Demo Credentials
+
+All seed accounts are initialized with the default password: `Demo@12345`
+
+| Role | Email | Password | Persona & Permitted Scope |
+|---|---|---|---|
+| **Administrator** | `admin@school.demo` | `Demo@12345` | Full system access. Can view all 60 students across all sections, manage users, and inspect audit logs. |
+| **Teacher (Multi-Section)** | `teacher1@school.demo` | `Demo@12345` | Assigned to sections 6A and 7A. Scoped queries allow viewing exactly 20 students in those sections. |
+| **Teacher (Single-Section)** | `teacher2@school.demo` | `Demo@12345` | Assigned strictly to section 6A Math. Scoped queries allow viewing only the 10 students in 6A. |
+| **Guardian (Multi-Child)** | `guardian1@school.demo` | `Demo@12345` | Parent linked to 2 enrolled students (Student 1 and Student 2). |
+| **Guardian (Single-Child)** | `guardian2@school.demo` | `Demo@12345` | Parent linked to 1 enrolled student (Student 3). |
 
 ### Environment Variables
 
@@ -71,10 +98,11 @@ npm run dev
 | `REFRESH_TOKEN_SECRET` | Secret key for refresh tokens | required in production |
 | `REFRESH_TOKEN_EXPIRES_IN`| Refresh token lifespan | `7d` |
 | `COOKIE_SECRET` | Secret key for signed cookies | required in production |
+| `MAX_FAILED_LOGIN_ATTEMPTS` | Failed login attempts before account lockout | `5` |
+| `LOCKOUT_DURATION_MINUTES` | Lockout duration in minutes | `15` |
 | `ATTENDANCE_EDIT_WINDOW_DAYS` | Days within which teachers can modify attendance | `2` |
 | `SCHOOL_TIMEZONE` | Timezone for day-boundary calculations | `Asia/Kolkata` |
 
 ## AI Assistance
 
 This project is built with the help of an AI coding agent under the author's direction, supervision, and active architectural review. Full details regarding AI tooling, prompting workflows, and human review protocols will be added in the final README.
-

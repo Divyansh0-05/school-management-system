@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import swaggerUi from 'swagger-ui-express';
 import type { HealthCheckResponse } from '@school/shared';
 import { env } from './config/env.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
@@ -9,10 +10,17 @@ import { requestLogger } from './middleware/requestLogger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { getDbStatus } from './db/connection.js';
 import { NotFoundError } from './errors/appError.js';
+import { authRouter } from './modules/auth/auth.routes.js';
+import { studentRouter } from './modules/students/student.routes.js';
+import { generateOpenApiDocument } from './docs/openapi.js';
 
 export const app = express();
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Allows Swagger UI to load internal stylesheets and scripts
+  })
+);
 app.use(
   cors({
     origin: [env.WEB_URL, 'http://localhost:3000'],
@@ -36,7 +44,7 @@ const handleHealth = (_req: Request, res: Response) => {
     database: dbStatus,
   };
 
-  res.status(response.status === 'ok' ? 200 : 200).json(response);
+  res.status(200).json(response);
 };
 
 const handleReady = (_req: Request, res: Response) => {
@@ -56,6 +64,17 @@ app.get('/ready', handleReady);
 app.get('/api/health', handleHealth);
 app.get('/api/ready', handleReady);
 
+// OpenAPI Documentation & Swagger UI
+const openApiDoc = generateOpenApiDocument();
+app.get('/api/docs/openapi.json', (_req: Request, res: Response) => {
+  res.status(200).json(openApiDoc);
+});
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiDoc));
+
+// API v1 Modules
+app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/students', studentRouter);
+
 // 404 handler for unmatched routes
 app.use((req, _res, next) => {
   next(new NotFoundError(`Route ${req.method} ${req.originalUrl} not found`));
@@ -63,4 +82,3 @@ app.use((req, _res, next) => {
 
 // Central RFC 7807 error handler
 app.use(errorHandler);
-

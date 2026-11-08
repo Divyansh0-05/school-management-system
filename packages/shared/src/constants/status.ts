@@ -1,3 +1,26 @@
+export const StudentStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  GRADUATED: 'GRADUATED',
+} as const;
+export type StudentStatus = (typeof StudentStatus)[keyof typeof StudentStatus];
+
+export const GuardianRelationship = {
+  FATHER: 'FATHER',
+  MOTHER: 'MOTHER',
+  GUARDIAN: 'GUARDIAN',
+  OTHER: 'OTHER',
+} as const;
+export type GuardianRelationship =
+  (typeof GuardianRelationship)[keyof typeof GuardianRelationship];
+
+export const Gender = {
+  MALE: 'MALE',
+  FEMALE: 'FEMALE',
+  OTHER: 'OTHER',
+} as const;
+export type Gender = (typeof Gender)[keyof typeof Gender];
+
 export const AttendanceStatus = {
   PRESENT: 'PRESENT',
   ABSENT: 'ABSENT',
@@ -49,4 +72,3 @@ export const LedgerEntryType = {
   INVOICE_VOID: 'INVOICE_VOID',
 } as const;
 export type LedgerEntryType = (typeof LedgerEntryType)[keyof typeof LedgerEntryType];
-

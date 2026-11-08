@@ -71,3 +71,29 @@ This document records the architectural and design decisions made throughout the
   - If a teacher queries an unassigned section, or a guardian queries a student not linked to their guardian account, the query returns no documents, triggering a standard `404 Not Found` rather than a `403 Forbidden`.
 - **Consequences:** Eliminates data existence leaks while maintaining strict role-level security boundaries.
 
+---
+
+## ADR-006: Timing-Safe Authentication & Brute-Force Lockout
+
+- **Status:** Accepted
+- **Date:** 2026-11-08
+- **Context:** User authentication endpoints are vulnerable to credential stuffing, brute-force dictionary attacks, and user-enumeration side-channel timing attacks.
+- **Decision:**
+  - Passwords are hashed using `bcryptjs` with salt work factor of at least 12.
+  - When a non-existent email is provided during login, the system still runs a bcrypt comparison against a dummy salt hash to ensure execution time is indistinguishable from an existing user check (preventing email enumeration via timing side-channels).
+  - Failed login attempts are incremented atomically. Upon reaching 5 consecutive failures, the account is locked for 15 minutes (`locked_until = now + 15m`).
+  - Responses for invalid email, invalid password, or deactivated accounts return a uniform `401 Unauthorized` with generic detail "Invalid email or password".
+- **Consequences:** Eliminates user enumeration via response timing or error messages and defends against automated credential stuffing.
+
+---
+
+## ADR-007: Append-Only Immutability for Audit Logs and Financial Ledgers
+
+- **Status:** Accepted
+- **Date:** 2026-11-08
+- **Context:** Regulatory compliance, audit reliability, and financial integrity require that audit trails and financial ledger entries can never be altered or deleted, even by administrative users.
+- **Decision:**
+  - The Mongoose schemas for `AuditLog` and `LedgerEntry` register strict pre-hooks blocking all update and delete methods (`updateOne`, `updateMany`, `replaceOne`, `findOneAndUpdate`, `deleteOne`, `deleteMany`, `findOneAndDelete`, `findOneAndReplace`).
+  - Repository interfaces for these collections expose only `create` / `createMany` and query (`find`, `findById`) operations; no update or deletion signatures exist in code.
+  - Financial adjustments and corrections must be recorded as new offsetting ledger entries (`entry_type: REVERSAL` or `ADJUSTMENT`) with an explicit reference to the parent transaction.
+- **Consequences:** Guarantees cryptographically verifiable immutability and complete historical traceability.
