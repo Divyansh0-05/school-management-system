@@ -3,6 +3,7 @@ import { connectDb, disconnectDb } from '../db/connection.js';
 import { logger } from '../utils/logger.js';
 import { seedIdentity } from './identity.js';
 import { seedAcademics } from './academics.js';
+import { seedAttendance } from './attendance.js';
 
 export async function seed(dbUri?: string): Promise<void> {
   if (env.NODE_ENV === 'production' && env.ALLOW_DEMO_SEED !== 'true') {
@@ -21,6 +22,8 @@ export async function seed(dbUri?: string): Promise<void> {
 
     logger.info('Seeding academics (year, classes, sections, subjects, enrollments, assignments)...');
     const academics = await seedAcademics(identity.teachers, identity.students);
+    logger.info('Seeding deterministic attendance history...');
+    await seedAttendance(academics.academicYear, identity.teachers);
 
     logger.info(
       {
@@ -53,4 +56,3 @@ if (process.argv[1] && process.argv[1].endsWith('index.ts')) {
       process.exit(1);
     });
 }
-
