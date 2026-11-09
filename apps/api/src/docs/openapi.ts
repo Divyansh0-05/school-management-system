@@ -15,6 +15,11 @@ import {
   StudentDetailResponseSchema,
   MasterQuerySchema,
   MasterBodySchemas,
+  AttendanceBulkBodySchema,
+  AttendanceDateQuerySchema,
+  AttendanceReportQuerySchema,
+  SingleAttendanceBodySchema,
+  StudentAttendanceSummaryQuerySchema,
 } from '@school/shared';
 
 extendZodWithOpenApi(z);
@@ -39,6 +44,8 @@ registry.register('StudentQuery', StudentQuerySchema);
 registry.register('StudentResponse', StudentResponseSchema);
 registry.register('StudentDetailResponse', StudentDetailResponseSchema);
 registry.register('MasterQuery', MasterQuerySchema);
+registry.register('AttendanceBulkBody', AttendanceBulkBodySchema);
+registry.register('SingleAttendanceBody', SingleAttendanceBodySchema);
 
 // Register Paths
 
@@ -56,6 +63,21 @@ registry.registerPath({
     },
   },
 });
+
+const attendanceErrorResponses = {
+  401: { description: 'Unauthenticated', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  403: { description: 'Role or edit-window restriction', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  404: { description: 'Resource not found or outside scope', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  422: { description: 'Invalid attendance request', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+};
+
+registry.registerPath({ method: 'get', path: '/api/v1/sections', summary: 'List accessible sections', tags: ['Attendance'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Accessible sections' }, ...attendanceErrorResponses } });
+registry.registerPath({ method: 'get', path: '/api/v1/sections/{id}/students', summary: 'List current section students', tags: ['Attendance'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Enrolled students' }, ...attendanceErrorResponses } });
+registry.registerPath({ method: 'get', path: '/api/v1/sections/{id}/attendance', summary: 'Read section attendance', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { query: AttendanceDateQuerySchema }, responses: { 200: { description: 'Attendance for a date and session' }, ...attendanceErrorResponses } });
+registry.registerPath({ method: 'put', path: '/api/v1/sections/{id}/attendance', summary: 'Idempotently record section attendance', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: AttendanceBulkBodySchema } } } }, responses: { 200: { description: 'Attendance saved' }, ...attendanceErrorResponses } });
+registry.registerPath({ method: 'post', path: '/api/v1/attendance', summary: 'Record one attendance row', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: SingleAttendanceBodySchema } } } }, responses: { 201: { description: 'Attendance created' }, 409: { description: 'Already recorded', content: { 'application/json': { schema: ApiErrorResponseSchema } } }, ...attendanceErrorResponses } });
+registry.registerPath({ method: 'get', path: '/api/v1/reports/attendance/section', summary: 'Summarize section attendance', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { query: AttendanceReportQuerySchema }, responses: { 200: { description: 'Section attendance summary' }, ...attendanceErrorResponses } });
+registry.registerPath({ method: 'get', path: '/api/v1/students/{id}/attendance-summary', summary: 'Summarize student attendance', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { query: StudentAttendanceSummaryQuerySchema }, responses: { 200: { description: 'Student attendance summary' }, ...attendanceErrorResponses } });
 
 for (const resource of Object.keys(MasterBodySchemas)) {
   const schema = MasterBodySchemas[resource as keyof typeof MasterBodySchemas];

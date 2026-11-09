@@ -96,6 +96,13 @@ This document records the architectural and design decisions made throughout the
 
 ## ADR-007: Append-Only Immutability for Audit Logs and Financial Ledgers
 
+## ADR-009: Attendance Calendar Dates and Scoped Recording
+
+- **Status:** Accepted
+- **Date:** 2026-11-09
+- **Decision:** Attendance stores the school-local calendar date as a strict `YYYY-MM-DD` string using `SCHOOL_TIMEZONE` (default `Asia/Kolkata`), never a UTC timestamp. Teacher writes are limited by `ATTENDANCE_EDIT_WINDOW_DAYS`; admins are unrestricted. Bulk writes validate the complete request before one transaction, upsert on `(student_id, date, session)`, and audit only creates or status changes in that same transaction.
+- **Consequences:** Date boundaries cannot create timezone-dependent duplicates, retries are safe, and failed audit writes roll back attendance changes. Scoped repository lookups return 404 for unassigned sections or unlinked students.s and Financial Ledgers
+
 - **Status:** Accepted
 - **Date:** 2026-11-08
 - **Context:** Regulatory compliance, audit reliability, and financial integrity require that audit trails and financial ledger entries can never be altered or deleted, even by administrative users.

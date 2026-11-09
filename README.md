@@ -29,6 +29,7 @@ This project is under active development. Below is the project phase roadmap:
 - [x] **Phase 0:** Bootstrap (Monorepo, Docker Compose MongoDB replica set, Express & Next.js skeletons, CI)
 - [ ] **Phase 1:** Data Model, Auth, RBAC, Audit, and Master Data (Part 1A: Data model, Auth, Scoping, and Audit complete; Part 1B: Master data CRUD and Admin UI next)
 - [ ] **Phase 2:** Attendance Management & Acceptance Tests (A1, A2)
+- Attendance API: `GET /api/v1/sections`, section students/attendance reads, idempotent bulk `PUT /api/v1/sections/:id/attendance`, single `POST /api/v1/attendance`, and attendance reports/summaries.
 - [ ] **Phase 3:** Exams, Grading Engine & Report Cards (A3)
 - [ ] **Phase 4:** Fees, Invoices, Append-Only Ledger & Payments (A5)
 - [ ] **Phase 5:** Guardian Portal, Dashboards, Reports & Accessibility (A4)
