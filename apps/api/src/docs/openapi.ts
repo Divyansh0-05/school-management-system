@@ -20,6 +20,11 @@ import {
   AttendanceReportQuerySchema,
   SingleAttendanceBodySchema,
   StudentAttendanceSummaryQuerySchema,
+  ExamCreateSchema,
+  ExamUpdateSchema,
+  MarksBodySchema,
+  MarksQuerySchema,
+  ExamQuerySchema,
 } from '@school/shared';
 
 extendZodWithOpenApi(z);
@@ -46,6 +51,9 @@ registry.register('StudentDetailResponse', StudentDetailResponseSchema);
 registry.register('MasterQuery', MasterQuerySchema);
 registry.register('AttendanceBulkBody', AttendanceBulkBodySchema);
 registry.register('SingleAttendanceBody', SingleAttendanceBodySchema);
+registry.register('ExamCreate', ExamCreateSchema);
+registry.register('ExamUpdate', ExamUpdateSchema);
+registry.register('MarksBody', MarksBodySchema);
 
 // Register Paths
 
@@ -78,6 +86,23 @@ registry.registerPath({ method: 'put', path: '/api/v1/sections/{id}/attendance',
 registry.registerPath({ method: 'post', path: '/api/v1/attendance', summary: 'Record one attendance row', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: SingleAttendanceBodySchema } } } }, responses: { 201: { description: 'Attendance created' }, 409: { description: 'Already recorded', content: { 'application/json': { schema: ApiErrorResponseSchema } } }, ...attendanceErrorResponses } });
 registry.registerPath({ method: 'get', path: '/api/v1/reports/attendance/section', summary: 'Summarize section attendance', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { query: AttendanceReportQuerySchema }, responses: { 200: { description: 'Section attendance summary' }, ...attendanceErrorResponses } });
 registry.registerPath({ method: 'get', path: '/api/v1/students/{id}/attendance-summary', summary: 'Summarize student attendance', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { query: StudentAttendanceSummaryQuerySchema }, responses: { 200: { description: 'Student attendance summary' }, ...attendanceErrorResponses } });
+
+const examErrors = {
+  401: { description: 'Unauthenticated', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  403: { description: 'Role is not permitted', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  404: { description: 'Resource not found or outside scope', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  409: { description: 'Invalid exam state or incomplete marks', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  422: { description: 'Invalid marks or exam input', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+};
+registry.registerPath({ method: 'get', path: '/api/v1/exams', summary: 'List exams', tags: ['Exams'], security: [{ bearerAuth: [] }], request: { query: ExamQuerySchema }, responses: { 200: { description: 'Paginated exams' }, ...examErrors } });
+registry.registerPath({ method: 'post', path: '/api/v1/exams', summary: 'Create a draft exam', tags: ['Exams'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: ExamCreateSchema } } } }, responses: { 201: { description: 'Created' }, ...examErrors } });
+registry.registerPath({ method: 'patch', path: '/api/v1/exams/{id}', summary: 'Edit a draft exam', tags: ['Exams'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: ExamUpdateSchema } } } }, responses: { 200: { description: 'Updated' }, ...examErrors } });
+for (const action of ['open', 'lock', 'publish', 'reopen']) registry.registerPath({ method: 'post', path: `/api/v1/exams/{id}/${action}`, summary: `${action} exam`, tags: ['Exams'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Transitioned' }, ...examErrors } });
+registry.registerPath({ method: 'get', path: '/api/v1/exams/{examId}/subjects/{subjectId}/marks', summary: 'Read subject marks', tags: ['Exams'], security: [{ bearerAuth: [] }], request: { query: MarksQuerySchema }, responses: { 200: { description: 'Marks' }, ...examErrors } });
+registry.registerPath({ method: 'put', path: '/api/v1/exams/{examId}/subjects/{subjectId}/marks', summary: 'Save subject marks', tags: ['Exams'], security: [{ bearerAuth: [] }], request: { query: MarksQuerySchema, body: { content: { 'application/json': { schema: MarksBodySchema } } } }, responses: { 200: { description: 'Marks saved' }, ...examErrors } });
+registry.registerPath({ method: 'get', path: '/api/v1/exams/{id}/results', summary: 'Read section results', tags: ['Exams'], security: [{ bearerAuth: [] }], request: { query: MarksQuerySchema }, responses: { 200: { description: 'Results' }, ...examErrors } });
+registry.registerPath({ method: 'get', path: '/api/v1/students/{id}/exams/{examId}/report-card', summary: 'Read report card', tags: ['Exams'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Report card' }, ...examErrors } });
+registry.registerPath({ method: 'get', path: '/api/v1/reports/academic/section-performance', summary: 'Read section performance', tags: ['Exams'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Performance report' }, ...examErrors } });
 
 for (const resource of Object.keys(MasterBodySchemas)) {
   const schema = MasterBodySchemas[resource as keyof typeof MasterBodySchemas];

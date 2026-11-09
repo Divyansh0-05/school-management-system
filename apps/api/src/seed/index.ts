@@ -4,6 +4,7 @@ import { logger } from '../utils/logger.js';
 import { seedIdentity } from './identity.js';
 import { seedAcademics } from './academics.js';
 import { seedAttendance } from './attendance.js';
+import { seedExams } from './exams.js';
 
 export async function seed(dbUri?: string): Promise<void> {
   if (env.NODE_ENV === 'production' && env.ALLOW_DEMO_SEED !== 'true') {
@@ -24,6 +25,8 @@ export async function seed(dbUri?: string): Promise<void> {
     const academics = await seedAcademics(identity.teachers, identity.students);
     logger.info('Seeding deterministic attendance history...');
     await seedAttendance(academics.academicYear, identity.teachers);
+    logger.info('Seeding deterministic exams and marks...');
+    await seedExams(academics, identity.adminUser._id);
 
     logger.info(
       {

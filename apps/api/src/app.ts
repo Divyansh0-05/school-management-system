@@ -15,6 +15,7 @@ import { studentRouter } from './modules/students/student.routes.js';
 import { masterDataRouter } from './modules/master-data/master-data.routes.js';
 import { generateOpenApiDocument } from './docs/openapi.js';
 import { attendanceRouter } from './modules/attendance/attendance.routes.js';
+import { examsRouter } from './modules/exams/exams.routes.js';
 
 export const app = express();
 
@@ -77,6 +78,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiDoc));
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/students', studentRouter);
 app.use('/api/v1', attendanceRouter);
+app.use('/api/v1', examsRouter);
 app.use('/api/v1', masterDataRouter);
 
 // 404 handler for unmatched routes
