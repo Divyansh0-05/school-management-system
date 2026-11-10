@@ -111,3 +111,8 @@ This document records the architectural and design decisions made throughout the
   - Repository interfaces for these collections expose only `create` / `createMany` and query (`find`, `findById`) operations; no update or deletion signatures exist in code.
   - Financial adjustments and corrections must be recorded as new offsetting ledger entries (`entry_type: REVERSAL` or `ADJUSTMENT`) with an explicit reference to the parent transaction.
 - **Consequences:** Guarantees cryptographically verifiable immutability and complete historical traceability.
+## Phase 3A: Exams and grading
+
+- Marks are stored as integer hundredths, while API input accepts decimal values with at most two places. Percentages are calculated with integer half-up rounding to integer hundredths of a percent.
+- A grading scheme is copied into `exams.grading_snapshot` during LOCK. Results use that immutable snapshot thereafter, so later scheme edits cannot change published history.
+- Exam dates and state transitions are controlled by the exam service; all marks and state changes plus audit rows run in the same Mongo transaction.

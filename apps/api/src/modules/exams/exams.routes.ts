@@ -1,0 +1,21 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { ExamCreateSchema, ExamQuerySchema, ExamUpdateSchema, IdParamsSchema, MarksBodySchema, MarksQuerySchema, ReportCardParamsSchema, SectionResultsQuerySchema, TransitionReasonSchema } from '@school/shared';
+import { requireAuth } from '../../middleware/auth.js';
+import { validate } from '../../middleware/validate.js';
+import { examsController } from './exams.controller.js';
+
+export const examsRouter = Router();
+examsRouter.use(requireAuth);
+examsRouter.get('/exams', validate({ query: ExamQuerySchema }), examsController.list);
+examsRouter.get('/exams/:id', validate({ params: IdParamsSchema }), examsController.get);
+examsRouter.post('/exams', validate({ body: ExamCreateSchema }), examsController.create);
+examsRouter.patch('/exams/:id', validate({ params: IdParamsSchema, body: ExamUpdateSchema }), examsController.update);
+examsRouter.delete('/exams/:id', validate({ params: IdParamsSchema }), examsController.remove);
+examsRouter.post('/exams/:id/:action', validate({ params: IdParamsSchema.extend({ action: z.enum(['open', 'lock', 'publish', 'reopen']) }), body: TransitionReasonSchema }), examsController.transition);
+const MarksParamsSchema = z.object({ examId: IdParamsSchema.shape.id, subjectId: IdParamsSchema.shape.id });
+examsRouter.get('/exams/:examId/subjects/:subjectId/marks', validate({ params: MarksParamsSchema, query: MarksQuerySchema }), examsController.marks);
+examsRouter.put('/exams/:examId/subjects/:subjectId/marks', validate({ params: MarksParamsSchema, query: MarksQuerySchema, body: MarksBodySchema }), examsController.putMarks);
+examsRouter.get('/exams/:id/results', validate({ params: IdParamsSchema, query: SectionResultsQuerySchema }), examsController.results);
+examsRouter.get('/students/:id/exams/:examId/report-card', validate({ params: ReportCardParamsSchema }), examsController.reportCard);
+examsRouter.get('/reports/academic/section-performance', validate({ query: MarksQuerySchema.extend({ examId: IdParamsSchema.shape.id }) }), examsController.performance);
