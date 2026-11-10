@@ -12,5 +12,6 @@ export * from './schemas/student.js';
 export * from './schemas/master-data.js';
 export * from './schemas/attendance.js';
 export * from './schemas/exams.js';
+export * from './schemas/fees.js';
 export * from './types/common.js';
 export { z };

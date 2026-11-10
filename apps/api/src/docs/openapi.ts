@@ -25,6 +25,12 @@ import {
   MarksBodySchema,
   MarksQuerySchema,
   ExamQuerySchema,
+  InvoiceCreateSchema,
+  InvoiceUpdateSchema,
+  InvoiceQuerySchema,
+  PaymentCreateSchema,
+  PaymentQuerySchema,
+  GenerateInvoiceSchema,
 } from '@school/shared';
 
 extendZodWithOpenApi(z);
@@ -86,6 +92,20 @@ registry.registerPath({ method: 'put', path: '/api/v1/sections/{id}/attendance',
 registry.registerPath({ method: 'post', path: '/api/v1/attendance', summary: 'Record one attendance row', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: SingleAttendanceBodySchema } } } }, responses: { 201: { description: 'Attendance created' }, 409: { description: 'Already recorded', content: { 'application/json': { schema: ApiErrorResponseSchema } } }, ...attendanceErrorResponses } });
 registry.registerPath({ method: 'get', path: '/api/v1/reports/attendance/section', summary: 'Summarize section attendance', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { query: AttendanceReportQuerySchema }, responses: { 200: { description: 'Section attendance summary' }, ...attendanceErrorResponses } });
 registry.registerPath({ method: 'get', path: '/api/v1/students/{id}/attendance-summary', summary: 'Summarize student attendance', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { query: StudentAttendanceSummaryQuerySchema }, responses: { 200: { description: 'Student attendance summary' }, ...attendanceErrorResponses } });
+
+const feeErrors = {
+  401: { description: 'Unauthenticated', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  403: { description: 'Role is not permitted', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  404: { description: 'Resource not found or outside scope', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  409: { description: 'Invalid invoice state or overpayment', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+  422: { description: 'Invalid fee request', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
+};
+registry.registerPath({ method: 'get', path: '/api/v1/invoices', summary: 'List invoices', tags: ['Fees'], security: [{ bearerAuth: [] }], request: { query: InvoiceQuerySchema }, responses: { 200: { description: 'Paginated invoices' }, ...feeErrors } });
+registry.registerPath({ method: 'post', path: '/api/v1/invoices', summary: 'Create draft invoice', tags: ['Fees'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: InvoiceCreateSchema } } } }, responses: { 201: { description: 'Created' }, ...feeErrors } });
+registry.registerPath({ method: 'post', path: '/api/v1/invoices/generate-for-section', summary: 'Generate section invoices idempotently', tags: ['Fees'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: GenerateInvoiceSchema } } } }, responses: { 201: { description: 'Created and skipped counts' }, ...feeErrors } });
+registry.registerPath({ method: 'patch', path: '/api/v1/invoices/{id}', summary: 'Edit draft invoice', tags: ['Fees'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: InvoiceUpdateSchema } } } }, responses: { 200: { description: 'Updated' }, ...feeErrors } });
+registry.registerPath({ method: 'post', path: '/api/v1/invoices/{id}/payments', summary: 'Record payment', tags: ['Fees'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: PaymentCreateSchema } } } }, responses: { 201: { description: 'Recorded' }, ...feeErrors } });
+registry.registerPath({ method: 'get', path: '/api/v1/payments', summary: 'List payments', tags: ['Fees'], security: [{ bearerAuth: [] }], request: { query: PaymentQuerySchema }, responses: { 200: { description: 'Paginated payments' }, ...feeErrors } });
 
 const examErrors = {
   401: { description: 'Unauthenticated', content: { 'application/json': { schema: ApiErrorResponseSchema } } },

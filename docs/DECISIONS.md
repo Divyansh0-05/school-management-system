@@ -98,6 +98,12 @@ This document records the architectural and design decisions made throughout the
   - Corrections are recorded as new offsetting entries (for example `REVERSAL`) that reference the original transaction.
 - **Consequences:** Immutability is enforced at the application layer and covered by tests. Someone with direct database credentials could still change documents. A production hardening step would be a restricted database role without update/delete rights on these collections. This is listed in the known limitations.
 
+## ADR-009: Fee Payments, Idempotency, and Derived Outstanding
+
+- **Status:** Accepted
+- **Decision:** Invoice and receipt numbers are allocated by transactional atomic counters. Successful payments append a negative ledger entry and update invoice state in the same transaction; failed simulated payments create only a payment record. Every payment requires an idempotency key whose request hash is checked for safe replay.
+- **Consequences:** Outstanding is always derived from the signed ledger, so retries and concurrent payment attempts cannot create a mutable balance that diverges from financial history. Guardians are scoped to linked students and cannot use CASH.
+
 ---
 
 ## ADR-008: Phase 1B Master-Data Administration

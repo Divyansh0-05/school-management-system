@@ -15,8 +15,8 @@ export * from './GradingScheme.js';
 export * from './Exam.js';
 export * from './Mark.js';
 export * from './FeeHead.js';
+export * from './Counter.js';
 export * from './Invoice.js';
 export * from './Payment.js';
 export * from './LedgerEntry.js';
 export * from './AuditLog.js';
-

@@ -67,6 +67,16 @@ describe('Route × Role Security Matrix Harness', () => {
     { method: 'get', path: '/api/v1/students/__ID__', role: 'ADMIN', expectedStatus: 200 },
     { method: 'get', path: '/api/v1/students/__ID__', role: 'TEACHER', expectedStatus: 200 },
     { method: 'get', path: '/api/v1/students/__ID__', role: 'GUARDIAN', expectedStatus: 200 },
+
+    // Fees
+    { method: 'get', path: '/api/v1/invoices', role: 'ANONYMOUS', expectedStatus: 401 },
+    { method: 'get', path: '/api/v1/invoices', role: 'ADMIN', expectedStatus: 200 },
+    { method: 'get', path: '/api/v1/invoices', role: 'TEACHER', expectedStatus: 403 },
+    { method: 'get', path: '/api/v1/invoices', role: 'GUARDIAN', expectedStatus: 200 },
+    { method: 'get', path: '/api/v1/payments', role: 'ANONYMOUS', expectedStatus: 401 },
+    { method: 'get', path: '/api/v1/payments', role: 'ADMIN', expectedStatus: 200 },
+    { method: 'get', path: '/api/v1/payments', role: 'TEACHER', expectedStatus: 403 },
+    { method: 'get', path: '/api/v1/reports/fees/reconciliation', role: 'GUARDIAN', expectedStatus: 403 },
   ];
 
   testCases.forEach(({ method, path, role, expectedStatus, body }) => {
@@ -85,4 +95,3 @@ describe('Route × Role Security Matrix Harness', () => {
     });
   });
 });
-
