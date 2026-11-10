@@ -9,6 +9,7 @@ test('teacher enters marks and guardian opens only published report cards', asyn
     page.waitForURL(/\/teacher\/exams\/[^/]+$/),
     page.getByRole('link', { name: /Demo Open Examination/ }).click(),
   ]);
+  await expect(page).not.toHaveURL(/undefined/);
   await expect(page.getByRole('heading', { name: 'Demo Open Examination' })).toBeVisible();
   await page.getByLabel('Marks subject').selectOption({ index: 1 });
   const marks = page.getByLabel(/Marks for/).first();
@@ -42,7 +43,12 @@ test('teacher enters marks and guardian opens only published report cards', asyn
   await expect(page.getByRole('heading', { name: 'Published report cards' })).toBeVisible();
   const reportLink = page.getByRole('link', { name: /Published report card/ }).first();
   await expect(reportLink).toBeVisible();
-  await page.goto(`/guardian/report-cards/${student.id}/${published._id}`);
+  await expect(reportLink).toHaveAttribute('href', new RegExp(`/guardian/report-cards/${student.id}/${published._id}$`));
+  await Promise.all([
+    page.waitForURL(/\/guardian\/report-cards\/[^/]+\/[^/]+$/),
+    reportLink.click(),
+  ]);
+  await expect(page).not.toHaveURL(/undefined/);
   await expect(page.getByText('Report card', { exact: true })).toBeVisible();
   await page.goto(`/guardian/report-cards/${student.id}/${unpublished._id}`);
   await expect(page).toHaveURL(/\/404$/);

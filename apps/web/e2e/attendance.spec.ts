@@ -40,7 +40,7 @@ test('guardian1 sees only linked children', async ({ page }) => {
   await signIn(page, 'guardian1@school.demo');
   await expect(page).toHaveURL(/\/guardian$/);
   await expect(page.getByRole('heading', { name: 'My children' })).toBeVisible();
-  await expect(page.getByText('Leo Davis')).toBeVisible();
-  await expect(page.getByText('Maya Davis')).toBeVisible();
+  await expect(page.getByRole('article').filter({ hasText: 'Leo Davis' })).toBeVisible();
+  await expect(page.getByRole('article').filter({ hasText: 'Maya Davis' })).toBeVisible();
   await expect(page.getByText('Rohan Patel')).not.toBeVisible();
 });
