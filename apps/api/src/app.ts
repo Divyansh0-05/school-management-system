@@ -16,6 +16,7 @@ import { masterDataRouter } from './modules/master-data/master-data.routes.js';
 import { generateOpenApiDocument } from './docs/openapi.js';
 import { attendanceRouter } from './modules/attendance/attendance.routes.js';
 import { examsRouter } from './modules/exams/exams.routes.js';
+import { feesRouter } from './modules/fees/fees.routes.js';
 
 export const app = express();
 
@@ -79,6 +80,7 @@ app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/students', studentRouter);
 app.use('/api/v1', attendanceRouter);
 app.use('/api/v1', examsRouter);
+app.use('/api/v1', feesRouter);
 app.use('/api/v1', masterDataRouter);
 
 // 404 handler for unmatched routes

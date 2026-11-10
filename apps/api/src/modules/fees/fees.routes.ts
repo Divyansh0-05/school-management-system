@@ -1,0 +1,21 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { requireAuth } from '../../middleware/auth.js';
+import { validate } from '../../middleware/validate.js';
+import { FeeIdParamsSchema, GenerateInvoiceSchema, InvoiceCreateSchema, InvoiceQuerySchema, InvoiceUpdateSchema, PaymentCreateSchema, PaymentQuerySchema, StudentLedgerQuerySchema } from '@school/shared';
+import { feesController } from './fees.controller.js';
+
+export const feesRouter = Router();
+feesRouter.use(requireAuth);
+feesRouter.get('/invoices', validate({ query: InvoiceQuerySchema }), feesController.list);
+feesRouter.post('/invoices', validate({ body: InvoiceCreateSchema }), feesController.create);
+feesRouter.post('/invoices/generate-for-section', validate({ body: GenerateInvoiceSchema }), feesController.generate);
+feesRouter.get('/invoices/:id', validate({ params: FeeIdParamsSchema }), feesController.get);
+feesRouter.patch('/invoices/:id', validate({ params: FeeIdParamsSchema, body: InvoiceUpdateSchema }), feesController.update);
+feesRouter.post('/invoices/:id/issue', validate({ params: FeeIdParamsSchema }), feesController.issue);
+feesRouter.post('/invoices/:id/void', validate({ params: FeeIdParamsSchema, body: z.object({ reason: z.string().max(500).optional() }) }), feesController.void);
+feesRouter.post('/invoices/:id/payments', validate({ params: FeeIdParamsSchema, body: PaymentCreateSchema }), feesController.pay);
+feesRouter.get('/payments', validate({ query: PaymentQuerySchema }), feesController.payments);
+feesRouter.get('/students/:id/ledger', validate({ params: FeeIdParamsSchema, query: StudentLedgerQuerySchema }), feesController.ledger);
+feesRouter.get('/reports/fees/summary', feesController.summary);
+feesRouter.get('/reports/fees/reconciliation', feesController.reconciliation);
