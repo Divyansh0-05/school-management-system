@@ -10,7 +10,7 @@ import { useToast } from './toast';
 type Exam = { _id: string; name: string; term: string; status: 'DRAFT' | 'MARKS_OPEN' | 'LOCKED' | 'PUBLISHED'; class_id: string; academic_year_id: string; grading_scheme_id: string; starts_on: string; exam_subjects: Array<{ subject_id: string; max_marks: number; pass_marks: number }> };
 type Option = { _id: string; name: string; code?: string };
 type Section = { _id: string; name: string; class_id: string };
-type Student = { _id: string; full_name: string; admission_no: string };
+type Student = { id: string; fullName?: string; full_name?: string; admissionNo?: string; admission_no?: string };
 type MarkRow = { studentId: string; marks: { marks_obtained: number | null; is_absent: boolean } | null };
 type ProblemError = Error & { problem?: ApiProblem };
 
@@ -112,5 +112,5 @@ export function ReportCard({ studentId, examId }: { studentId: string; examId: s
 export function GuardianExamReports() {
   const exams = useQuery({ queryKey: ['guardian-exams'], queryFn: () => apiRequest<{ data: Exam[] }>('/exams?pageSize=100') });
   const students = useQuery({ queryKey: ['guardian-students'], queryFn: () => apiRequest<{ data: Student[] }>('/students?pageSize=100') });
-  return <div className="space-y-4">{(students.data?.data || []).flatMap((student) => (exams.data?.data || []).map((exam) => <Link key={`${student._id}-${exam._id}`} href={`/guardian/report-cards/${student._id}/${exam._id}`} className="block rounded-2xl border bg-white p-5 shadow-sm hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-600"><h2 className="font-bold">{student.full_name}</h2><p className="text-sm text-slate-600">{exam.name} · Published report card</p></Link>))}</div>;
+  return <div className="space-y-4">{(students.data?.data || []).flatMap((student) => (exams.data?.data || []).map((exam) => <Link key={`${student.id}-${exam._id}`} href={`/guardian/report-cards/${student.id}/${exam._id}`} className="block rounded-2xl border bg-white p-5 shadow-sm hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-600"><h2 className="font-bold">{student.fullName || student.full_name || 'Student'}</h2><p className="text-sm text-slate-600">{exam.name} · Published report card</p></Link>))}</div>;
 }

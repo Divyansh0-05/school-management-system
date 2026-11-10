@@ -26,7 +26,7 @@ function problem(error: unknown) {
   return (error as Error & { problem?: ApiProblem }).problem;
 }
 
-function studentId(student: Student) { return student._id || student.id || ''; }
+function studentId(student: Student) { return student.id || student._id || ''; }
 function studentName(student: Student) { return student.full_name || student.fullName || 'Student'; }
 function studentAdmission(student: Student) { return student.admission_no || student.admissionNo || '—'; }
 
