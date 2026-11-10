@@ -11,9 +11,9 @@ import { AcademicYear } from '../../models/AcademicYear.js';
 import { Class } from '../../models/Class.js';
 
 export const examsRepository = {
-  list: (page: number, pageSize: number) => Promise.all([
-    Exam.find({}).sort({ starts_on: -1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
-    Exam.countDocuments({}),
+  list: (filter: Record<string, unknown>, page: number, pageSize: number) => Promise.all([
+    Exam.find(filter).sort({ starts_on: -1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
+    Exam.countDocuments(filter),
   ]),
   find: (id: string, session?: ClientSession) => Exam.findById(id).session(session || null).lean(),
   create: async (data: Record<string, unknown>, session: ClientSession) => (await Exam.create([data], { session }))[0].toObject(),
@@ -32,6 +32,11 @@ export const examsRepository = {
   },
   section: (id: string, session?: ClientSession) => Section.findById(id).session(session || null).lean(),
   assignment: (teacherId: string, sectionId: string, subjectId: string, session?: ClientSession) => TeacherAssignment.exists({ teacher_id: teacherId, section_id: sectionId, subject_id: subjectId }).session(session || null),
+  assignedClassIds: async (teacherId: string, session?: ClientSession) => {
+    const assignments = await TeacherAssignment.find({ teacher_id: teacherId }).select('section_id').session(session || null).lean();
+    const sections = await Section.find({ _id: { $in: assignments.map((item) => item.section_id) } }).select('class_id').session(session || null).lean();
+    return [...new Set(sections.map((item) => item.class_id.toString()))];
+  },
   linked: (guardianId: string, studentId: string, session?: ClientSession) => StudentGuardian.exists({ guardian_id: guardianId, student_id: studentId }).session(session || null),
   scheme: (id: string, session?: ClientSession) => GradingScheme.findById(id).session(session || null).lean(),
   academicYear: (id: string) => AcademicYear.findById(id).lean(),

@@ -39,9 +39,15 @@ export class ExamsService {
     if (!(await examsRepository.scheme(input.gradingSchemeId))) throw new NotFoundError('Grading scheme was not found');
     return { name: input.name, term: input.term, academic_year_id: objectId(input.academicYearId), class_id: objectId(input.classId), grading_scheme_id: objectId(input.gradingSchemeId), starts_on: input.startsOn, exam_subjects: subjects, status: ExamStatus.DRAFT, grading_snapshot: null, published_at: null };
   }
-  async list(actor: AuthTokenPayload, page: number, pageSize: number) {
-    if (actor.role !== UserRole.ADMIN && actor.role !== UserRole.TEACHER) throw new ForbiddenError('Role is not permitted', 'ROLE_NOT_PERMITTED');
-    const [data, total] = await examsRepository.list(page, pageSize);
+  async list(actor: AuthTokenPayload, page: number, pageSize: number, filters: { classId?: string; academicYearId?: string; status?: string }) {
+    if (actor.role !== UserRole.ADMIN && actor.role !== UserRole.TEACHER && actor.role !== UserRole.GUARDIAN) throw new ForbiddenError('Role is not permitted', 'ROLE_NOT_PERMITTED');
+    const filter: Record<string, unknown> = {};
+    if (filters.classId) filter.class_id = filters.classId;
+    if (filters.academicYearId) filter.academic_year_id = filters.academicYearId;
+    if (filters.status) filter.status = filters.status;
+    if (actor.role === UserRole.TEACHER) filter.class_id = { $in: actor.teacherId ? await examsRepository.assignedClassIds(actor.teacherId) : [] };
+    if (actor.role === UserRole.GUARDIAN) filter.status = ExamStatus.PUBLISHED;
+    const [data, total] = await examsRepository.list(filter, page, pageSize);
     return { data, meta: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) || 1 } };
   }
   async create(actor: AuthTokenPayload, input: ExamCreate, requestId: string, ip: string) {
@@ -159,9 +165,14 @@ export class ExamsService {
   async reportCard(actor: AuthTokenPayload, studentId: string, examId: string) {
     const exam = await this.get(examId);
     if (actor.role === UserRole.GUARDIAN && (exam.status !== ExamStatus.PUBLISHED || !actor.guardianId || !(await examsRepository.linked(actor.guardianId, studentId)))) throw new NotFoundError('Report card was not found');
-    if (actor.role !== UserRole.ADMIN && actor.role !== UserRole.GUARDIAN) throw new ForbiddenError('Role is not permitted', 'ROLE_NOT_PERMITTED');
+    if (actor.role !== UserRole.ADMIN && actor.role !== UserRole.GUARDIAN && actor.role !== UserRole.TEACHER) throw new ForbiddenError('Role is not permitted', 'ROLE_NOT_PERMITTED');
     const enrollment = (await examsRepository.enrollments(exam.class_id.toString())).find((item) => item.student_id.toString() === studentId);
     if (!enrollment) throw new NotFoundError('Report card was not found');
+    if (actor.role === UserRole.TEACHER) {
+      const section = await examsRepository.section(enrollment.section_id.toString());
+      const assigned = section && actor.teacherId && await Promise.all(exam.exam_subjects.map((item) => examsRepository.assignment(actor.teacherId!, section._id.toString(), item.subject_id.toString()))).then((values) => values.some(Boolean));
+      if (!assigned) throw new NotFoundError('Report card was not found');
+    }
     const results = await this.results(actor.role === UserRole.GUARDIAN ? { ...actor, role: UserRole.ADMIN } : actor, examId, enrollment.section_id.toString());
     const result = results.find((item) => item.studentId.toString() === studentId);
     if (!result) throw new NotFoundError('Report card was not found');

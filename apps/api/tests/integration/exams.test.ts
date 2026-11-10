@@ -17,6 +17,7 @@ describe('exams API', () => {
   let sectionId: string;
   let studentId: string;
   let teacher3: string[];
+  let teacher1: string[];
   let teacher2: string[];
   let openExamId: string;
   let openSectionId: string;
@@ -27,6 +28,7 @@ describe('exams API', () => {
     admin = (await request(app).post('/api/v1/auth/login').send({ email: 'admin@school.demo', password: 'Demo@12345' })).headers['set-cookie'];
     guardian = (await request(app).post('/api/v1/auth/login').send({ email: 'guardian1@school.demo', password: 'Demo@12345' })).headers['set-cookie'];
     teacher3 = (await request(app).post('/api/v1/auth/login').send({ email: 'teacher3@school.demo', password: 'Demo@12345' })).headers['set-cookie'];
+    teacher1 = (await request(app).post('/api/v1/auth/login').send({ email: 'teacher1@school.demo', password: 'Demo@12345' })).headers['set-cookie'];
     teacher2 = (await request(app).post('/api/v1/auth/login').send({ email: 'teacher2@school.demo', password: 'Demo@12345' })).headers['set-cookie'];
     const exam = await Exam.findOne({ name: 'Demo Term Examination' }).lean();
     examId = exam!._id.toString();
@@ -42,6 +44,9 @@ describe('exams API', () => {
 
   it('returns hand-calculated seeded boundary, absent, failing, and tied results', async () => {
     expect((await request(app).get('/api/v1/exams')).status).toBe(401);
+    const teacherList = await request(app).get('/api/v1/exams?pageSize=100').set('Cookie', teacher3);
+    expect(teacherList.status).toBe(200);
+    expect(teacherList.body.data.every((item: { class_id: string }) => item.class_id)).toBe(true);
     const response = await request(app).get(`/api/v1/exams/${examId}/results`).query({ sectionId }).set('Cookie', admin);
     expect(response.status).toBe(200);
     const first = response.body.data.find((item: { studentId: string }) => item.studentId === studentId);
@@ -49,6 +54,14 @@ describe('exams API', () => {
     expect(first).toMatchObject({ total: 18000, maxTotal: 20000, overallPercent: 9000, grade: 'A', result: 'PASS', rank: 1, sectionStrength: 10 });
     const report = await request(app).get(`/api/v1/students/${studentId}/exams/${examId}/report-card`).set('Cookie', guardian);
     expect(report.status).toBe(200);
+  });
+
+  it('allows an assigned teacher report card and restricts guardian exam discovery to published exams', async () => {
+    const teacherReport = await request(app).get(`/api/v1/students/${studentId}/exams/${examId}/report-card`).set('Cookie', teacher1);
+    expect(teacherReport.status).toBe(200);
+    const guardianExams = await request(app).get('/api/v1/exams?pageSize=100').set('Cookie', guardian);
+    expect(guardianExams.status).toBe(200);
+    expect(guardianExams.body.data.every((item: { status: string }) => item.status === 'PUBLISHED')).toBe(true);
   });
 
   it('keeps the grading snapshot stable and blocks referenced scheme edits', async () => {

@@ -30,7 +30,13 @@ export const ExamCreateSchema = z.object({
 });
 
 export const ExamUpdateSchema = ExamCreateSchema.partial();
-export const ExamQuerySchema = z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20) });
+export const ExamQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  classId: objectId.optional(),
+  academicYearId: objectId.optional(),
+  status: z.enum(['DRAFT', 'MARKS_OPEN', 'LOCKED', 'PUBLISHED']).optional(),
+});
 export const MarksQuerySchema = z.object({ sectionId: objectId });
 export const MarksBodySchema = z.object({
   records: z.array(z.object({ studentId: objectId, marks: decimal.nullable().optional(), isAbsent: z.boolean().default(false) })).min(1),

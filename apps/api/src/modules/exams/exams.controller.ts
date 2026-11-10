@@ -4,7 +4,7 @@ import { examsService } from './exams.service.js';
 const actor = (req: Request) => { if (!req.user) throw new UnauthorizedError(); return req.user; };
 const context = (req: Request) => ({ requestId: String(req.id || 'unknown'), ip: req.ip || 'unknown' });
 export const examsController = {
-  list: async (req: Request, res: Response, next: NextFunction) => { try { res.json(await examsService.list(actor(req), Number(req.query.page), Number(req.query.pageSize))); } catch (e) { next(e); } },
+  list: async (req: Request, res: Response, next: NextFunction) => { try { res.json(await examsService.list(actor(req), Number(req.query.page), Number(req.query.pageSize), req.query as { classId?: string; academicYearId?: string; status?: string })); } catch (e) { next(e); } },
   get: async (req: Request, res: Response, next: NextFunction) => { try { res.json({ data: await examsService.get(req.params.id) }); } catch (e) { next(e); } },
   create: async (req: Request, res: Response, next: NextFunction) => { try { const c = context(req); res.status(201).json({ data: await examsService.create(actor(req), req.body, c.requestId, c.ip) }); } catch (e) { next(e); } },
   update: async (req: Request, res: Response, next: NextFunction) => { try { const c = context(req); res.json({ data: await examsService.update(actor(req), req.params.id, req.body, c.requestId, c.ip) }); } catch (e) { next(e); } },

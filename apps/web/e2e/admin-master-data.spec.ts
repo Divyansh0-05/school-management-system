@@ -1,12 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { signIn } from './auth';
 
 test('admin signs in, creates a student, and finds it in the list', async ({ page }) => {
   test.setTimeout(60_000);
   const admissionNumber = `E2E-${Date.now()}`;
-  await page.goto('/login');
-  await page.getByLabel('Email').fill('admin@school.demo');
-  await page.getByLabel('Password').fill('Demo@12345');
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await signIn(page, 'admin@school.demo');
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto('/admin/students');
   await expect(page.getByRole('heading', { name: 'Students' })).toBeVisible();
