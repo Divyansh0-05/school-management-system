@@ -11,7 +11,7 @@ const links = [
   ['academic-years', 'Academic years'], ['enrollments', 'Enrollments'],
   ['teacher-assignments', 'Teacher assignments'], ['class-subjects', 'Class subjects'],
   ['fee-heads', 'Fee heads'], ['grading-schemes', 'Grading schemes'],
-  ['attendance', 'Attendance'], ['exams', 'Exams'],
+  ['attendance', 'Attendance'], ['exams', 'Exams'], ['invoices', 'Invoices'], ['reports/fees', 'Fee reports'], ['audit-logs', 'Audit logs'],
 ];
 
 export function AdminShell({ children, name }: { children: React.ReactNode; name: string }) {
