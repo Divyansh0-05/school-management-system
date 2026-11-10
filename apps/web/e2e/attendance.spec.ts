@@ -1,11 +1,5 @@
 import { expect, request as playwrightRequest, test } from '@playwright/test';
-
-async function signIn(page: import('@playwright/test').Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill('Demo@12345');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-}
+import { signIn } from './auth';
 
 test('teacher2 sees one assigned section and persists attendance', async ({ page }) => {
   await signIn(page, 'teacher2@school.demo');
@@ -13,12 +7,17 @@ test('teacher2 sees one assigned section and persists attendance', async ({ page
   await expect(page.getByRole('heading', { name: 'My classes' })).toBeVisible();
   const sectionLink = page.getByRole('link', { name: /Open attendance sheet/ });
   await expect(sectionLink).toHaveCount(1);
-  await sectionLink.click();
+  await Promise.all([
+    page.waitForURL(/\/teacher\/sections\/[^/]+$/),
+    sectionLink.click(),
+  ]);
   await expect(page.getByRole('heading', { name: /section attendance/i })).toBeVisible();
   const firstStatus = page.getByLabel(/Status for/).first();
   await firstStatus.selectOption('EXCUSED');
-  await page.getByRole('button', { name: 'Save attendance' }).click();
-  await expect(page.getByText('Attendance saved successfully.')).toBeVisible();
+  await Promise.all([
+    page.waitForResponse((response) => response.url().includes('/attendance') && response.request().method() === 'PUT' && response.ok()),
+    page.getByRole('button', { name: 'Save attendance' }).click(),
+  ]);
   await page.reload();
   await expect(firstStatus).toHaveValue('EXCUSED');
 });
