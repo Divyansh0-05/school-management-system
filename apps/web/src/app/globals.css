@@ -29,6 +29,20 @@ textarea:focus-visible {
     display: none;
   }
 
+  @media print {
+    nav,
+    aside,
+    header,
+    button,
+    a {
+      display: none !important;
+    }
+
+    body {
+      background: white;
+    }
+  }
+
   .responsive-table tr {
     display: block;
     margin-bottom: 1rem;
