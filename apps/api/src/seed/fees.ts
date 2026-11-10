@@ -19,7 +19,7 @@ export async function seedFees(academics: SeededAcademics, students: IStudent[],
   ];
   for (let index = 0; index < definitions.length; index += 1) {
     const definition = definitions[index];
-    const student = students[index % students.length];
+    const student = students[[0, 1, 0, 1, 2][index] ?? index % students.length];
     const invoice = await Invoice.findOneAndUpdate(
       { invoice_no: `INV-2026-DEMO-${index + 1}` },
       {
