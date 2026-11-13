@@ -36,6 +36,27 @@ test('teacher2 receives the 404 page for another section', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /not found/i })).toBeVisible();
 });
 
+test('teacher1 sees assigned sections, opens attendance sheet, and saves attendance', async ({ page }) => {
+  await signIn(page, 'teacher1@school.demo');
+  await expect(page).toHaveURL(/\/teacher$/);
+  await expect(page.getByRole('heading', { name: 'My classes' })).toBeVisible();
+  const sectionLinks = page.getByRole('link', { name: /Open attendance sheet/ });
+  await expect(sectionLinks.first()).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/teacher\/sections\/[^/]+$/),
+    sectionLinks.first().click(),
+  ]);
+  await expect(page.getByRole('heading', { name: /section attendance/i })).toBeVisible();
+  const firstStatus = page.getByLabel(/Status for/).first();
+  await firstStatus.selectOption('PRESENT');
+  await Promise.all([
+    page.waitForResponse((response) => response.url().includes('/attendance') && response.request().method() === 'PUT' && response.ok()),
+    page.getByRole('button', { name: 'Save attendance' }).click(),
+  ]);
+  await page.reload();
+  await expect(firstStatus).toHaveValue('PRESENT');
+});
+
 test('guardian1 sees only linked children', async ({ page }) => {
   await signIn(page, 'guardian1@school.demo');
   await expect(page).toHaveURL(/\/guardian$/);

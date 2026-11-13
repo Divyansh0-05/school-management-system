@@ -84,11 +84,20 @@ describe('Master data administration', () => {
     expect(typeof res.body.meta.totalPages).toBe('number');
   });
 
-  it('returns un-wrapped paginated audit logs via admin GET /api/v1/audit-logs', async () => {
+  it('returns un-wrapped paginated audit logs via admin GET /api/v1/audit-logs and enforces access control', async () => {
+    const anonRes = await request(app).get('/api/v1/audit-logs');
+    expect(anonRes.status).toBe(401);
+
+    const teacherRes = await request(app).get('/api/v1/audit-logs').set('Cookie', teacherCookie);
+    expect(teacherRes.status).toBe(403);
+
     const res = await request(app).get('/api/v1/audit-logs').set('Cookie', adminCookie);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.meta).toBeDefined();
+    expect(typeof res.body.meta.page).toBe('number');
+    expect(typeof res.body.meta.pageSize).toBe('number');
+    expect(typeof res.body.meta.total).toBe('number');
     expect(typeof res.body.meta.totalPages).toBe('number');
   });
 });

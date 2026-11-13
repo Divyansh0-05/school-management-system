@@ -1,4 +1,4 @@
-import { AttendanceRecord, AuditLog, Student } from '../../models/index.js';
+import { AttendanceRecord, AuditLog, Student, type IAuditLog } from '../../models/index.js';
 import { auditRepository } from '../../audit/audit.repository.js';
 import { ForbiddenError } from '../../errors/appError.js';
 import { StudentStatus, UserRole } from '@school/shared';
@@ -46,6 +46,20 @@ export const adminService = {
       page, pageSize, actor_user_id: input.actor, entity_type: input.entityType, action: input.action,
       from: input.from ? new Date(input.from) : undefined, to: input.to ? new Date(input.to) : undefined,
     });
-    return { data: result.logs, meta: { page, pageSize, total: result.total, totalPages: Math.ceil(result.total / pageSize) || 1 } };
+    const logs = result.logs.map((doc: IAuditLog) => ({
+      id: String(doc._id),
+      _id: String(doc._id),
+      at: doc.at instanceof Date ? doc.at.toISOString() : (doc.at ? String(doc.at) : ''),
+      actor_user_id: doc.actor_user_id ? String(doc.actor_user_id) : '',
+      actor_role: String(doc.actor_role || ''),
+      action: String(doc.action || ''),
+      entity_type: String(doc.entity_type || ''),
+      entity_id: String(doc.entity_id || ''),
+      request_id: String(doc.request_id || ''),
+      ip: String(doc.ip || ''),
+      before: doc.before || null,
+      after: doc.after || null,
+    }));
+    return { data: logs, meta: { page, pageSize, total: result.total, totalPages: Math.ceil(result.total / pageSize) || 1 } };
   },
 };

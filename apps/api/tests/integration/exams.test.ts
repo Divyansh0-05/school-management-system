@@ -98,4 +98,26 @@ describe('exams API', () => {
     spy.mockRestore();
     expect(response.status).toBe(500);
   });
+
+  it('returns subject_name for every subject row in guardian report card', async () => {
+    const { StudentGuardian } = await import('../../src/models/StudentGuardian.js');
+    const { Guardian } = await import('../../src/models/Guardian.js');
+    const { User } = await import('../../src/models/User.js');
+    const user = await User.findOne({ email: 'guardian1@school.demo' });
+    const guardianDoc = await Guardian.findOne({ user_id: user!._id });
+    const link = await StudentGuardian.findOne({ guardian_id: guardianDoc!._id });
+    const linkedStudentId = link!.student_id.toString();
+
+    const response = await request(app)
+      .get(`/api/v1/students/${linkedStudentId}/exams/${examId}/report-card`)
+      .set('Cookie', guardian);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.subjects).toBeDefined();
+    expect(response.body.data.subjects.length).toBeGreaterThan(0);
+    for (const sub of response.body.data.subjects) {
+      expect(typeof sub.subject_name).toBe('string');
+      expect(sub.subject_name.length).toBeGreaterThan(0);
+    }
+  });
 });
