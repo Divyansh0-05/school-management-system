@@ -41,7 +41,7 @@ describe('attendance API', () => {
       request(app).post('/api/v1/auth/login').send({ email: 'guardian2@school.demo', password: 'Demo@12345' }),
     ]);
     admin = a.headers['set-cookie']; teacher1 = t1.headers['set-cookie']; teacher2 = t2.headers['set-cookie']; guardian1 = g1.headers['set-cookie']; guardian2 = g2.headers['set-cookie'];
-    const sections = await request(app).get('/api/v1/sections').set('Cookie', teacher2);
+    const sections = await request(app).get('/api/v1/attendance/sections').set('Cookie', teacher2);
     assignedSection = sections.body.data[0]._id;
     const allSections = await Section.find({}).lean();
     otherSection = allSections.find((section) => section._id.toString() !== assignedSection)!._id.toString();
@@ -52,10 +52,10 @@ describe('attendance API', () => {
   afterAll(async () => teardownTestDb());
 
   it('enforces assigned-section, guardian-write, and anonymous rules', async () => {
-    expect((await request(app).get('/api/v1/sections').set('Cookie', teacher1)).status).toBe(200);
+    expect((await request(app).get('/api/v1/attendance/sections').set('Cookie', teacher1)).status).toBe(200);
     expect((await request(app).get(`/api/v1/sections/${otherSection}/students`).set('Cookie', teacher2)).status).toBe(404);
     expect((await request(app).put(`/api/v1/sections/${assignedSection}/attendance`).set('Cookie', guardian1).send({ date: today(), session: 'MORNING', records: [] })).status).toBe(403);
-    expect((await request(app).get('/api/v1/sections')).status).toBe(401);
+    expect((await request(app).get('/api/v1/attendance/sections')).status).toBe(401);
   });
 
   it('bulk PUT is idempotent and only audits status changes', async () => {

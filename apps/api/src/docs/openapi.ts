@@ -85,7 +85,7 @@ const attendanceErrorResponses = {
   422: { description: 'Invalid attendance request', content: { 'application/json': { schema: ApiErrorResponseSchema } } },
 };
 
-registry.registerPath({ method: 'get', path: '/api/v1/sections', summary: 'List accessible sections', tags: ['Attendance'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Accessible sections' }, ...attendanceErrorResponses } });
+registry.registerPath({ method: 'get', path: '/api/v1/attendance/sections', summary: 'List accessible sections', tags: ['Attendance'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Accessible sections' }, ...attendanceErrorResponses } });
 registry.registerPath({ method: 'get', path: '/api/v1/sections/{id}/students', summary: 'List current section students', tags: ['Attendance'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Enrolled students' }, ...attendanceErrorResponses } });
 registry.registerPath({ method: 'get', path: '/api/v1/sections/{id}/attendance', summary: 'Read section attendance', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { query: AttendanceDateQuerySchema }, responses: { 200: { description: 'Attendance for a date and session' }, ...attendanceErrorResponses } });
 registry.registerPath({ method: 'put', path: '/api/v1/sections/{id}/attendance', summary: 'Idempotently record section attendance', tags: ['Attendance'], security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: AttendanceBulkBodySchema } } } }, responses: { 200: { description: 'Attendance saved' }, ...attendanceErrorResponses } });

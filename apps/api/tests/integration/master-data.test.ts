@@ -76,4 +76,19 @@ describe('Master data administration', () => {
     const deleted = await request(app).delete(`/api/v1/classes/${cls!._id}`).set('Cookie', adminCookie);
     expect(deleted.status).toBe(409);
   });
+
+  it('returns a meta object with totalPages on admin GET /api/v1/sections', async () => {
+    const res = await request(app).get('/api/v1/sections').set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.meta).toBeDefined();
+    expect(typeof res.body.meta.totalPages).toBe('number');
+  });
+
+  it('returns un-wrapped paginated audit logs via admin GET /api/v1/audit-logs', async () => {
+    const res = await request(app).get('/api/v1/audit-logs').set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.meta).toBeDefined();
+    expect(typeof res.body.meta.totalPages).toBe('number');
+  });
 });

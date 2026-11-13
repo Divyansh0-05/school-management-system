@@ -12,6 +12,6 @@ export const adminController = {
     try { res.json({ data: await adminService.dashboard(actor(req)) }); } catch (error) { next(error); }
   },
   auditLogs: async (req: Request, res: Response, next: NextFunction) => {
-    try { res.json({ data: await adminService.auditLogs(actor(req), req.query) }); } catch (error) { next(error); }
+    try { res.json(await adminService.auditLogs(actor(req), req.query)); } catch (error) { next(error); }
   },
 };

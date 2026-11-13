@@ -26,7 +26,7 @@ test('teacher2 receives the 404 page for another section', async ({ page }) => {
   const api = await playwrightRequest.newContext({ baseURL: 'http://127.0.0.1:5000' });
   const login = await api.post('/api/v1/auth/login', { data: { email: 'teacher1@school.demo', password: 'Demo@12345' } });
   expect(login.ok()).toBeTruthy();
-  const assigned = await api.get('/api/v1/sections');
+  const assigned = await api.get('/api/v1/attendance/sections');
   const teacherSections = (await assigned.json()).data as Array<{ _id: string }>;
   await api.dispose();
   await signIn(page, 'teacher2@school.demo');
