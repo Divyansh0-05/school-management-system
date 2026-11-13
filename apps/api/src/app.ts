@@ -21,6 +21,11 @@ import { adminRouter } from './modules/admin/admin.routes.js';
 
 export const app = express();
 
+// Behind Vercel and Render there are two proxy hops; trust them so rate limiting sees the real client IP
+if (env.NODE_ENV === 'production') {
+  app.set('trust proxy', 2);
+}
+
 app.use(
   helmet({
     contentSecurityPolicy: false, // Allows Swagger UI to load internal stylesheets and scripts

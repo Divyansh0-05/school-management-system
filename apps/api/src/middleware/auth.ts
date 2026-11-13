@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { UserRole } from '@school/shared';
-import { verifyAuthToken, AuthTokenPayload } from '../modules/auth/auth.tokens.js';
+import { verifyAuthToken, signAuthToken, AuthTokenPayload } from '../modules/auth/auth.tokens.js';
 import { UnauthorizedError, ForbiddenError } from '../errors/appError.js';
 import { env } from '../config/env.js';
 
@@ -34,9 +34,17 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     const payload = verifyAuthToken(token);
     req.user = payload;
 
-    // Sliding refresh: refresh cookie expiry on valid authenticated requests
+      // Sliding refresh: issue a fresh 15-minute token on every valid authenticated request
+    const refreshed = signAuthToken({
+      sub: payload.sub,
+      email: payload.email,
+      role: payload.role,
+      fullName: payload.fullName,
+      teacherId: payload.teacherId,
+      guardianId: payload.guardianId,
+    });
     const isProduction = env.NODE_ENV === 'production';
-    res.cookie('auth_token', token, {
+    res.cookie('auth_token', refreshed, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
