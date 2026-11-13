@@ -1,11 +1,17 @@
-# Known Limitations & Design Boundaries
+# Known Limitations
 
-This document maintains an honest, transparent record of scope boundaries and architectural trade-offs within the School Management System.
+An honest list of scope boundaries and trade-offs.
 
-1. **Simulated Payment Gateway:** No real money transitions occur. Payment flows support `SIMULATED_CARD`, `SIMULATED_UPI`, and `CASH` with an explicit simulator toggle (Success/Failure) to test ledger consistency and idempotency safely.
-2. **External Notification Channels (SMS/Email):** System operations do not dispatch real SMS or email notifications. Communication is simulated or delivered via in-app audit trails and dashboards.
-3. **Single Active Academic Year:** Although the database schema supports multiple historical academic years, day-to-day operations and active enrollments resolve against the single year marked `is_current: true`.
-4. **No Direct Student Logins:** Access is tailored for Administrators, Teachers, and Guardians. Students view their records and report cards via their registered guardian's portal.
-5. **Fee Refunds / Chargebacks:** While ledger reversals are supported structurally (`REVERSAL` ledger entry type), complex multi-currency adjustments and automated merchant refunds are out of scope.
-6. **Free-Tier Cold Starts:** When hosted on free cloud tiers (such as Render), the API server may idle after inactivity, resulting in a 30–60 second latency on initial boot. The web client includes an explicit "Waking up server..." status banner to inform users during cold starts.
-
+1. **Simulated payments.** No real money moves. Methods are `SIMULATED_CARD`, `SIMULATED_UPI` (with a success/failure switch) and admin-recorded `CASH`.
+2. **No notifications.** No SMS or email is sent. Events are visible in the audit log and dashboards only.
+3. **One current academic year.** The schema supports several years; day-to-day screens use the year marked current.
+4. **No student logins.** Students are viewed through their guardian's account.
+5. **No refunds or chargebacks.** The ledger supports `REVERSAL` entries, but there is no refund workflow.
+6. **Free-tier cold starts.** The Render API sleeps when idle; the first request can take 30–60 seconds. There is no "waking up" banner in the UI.
+7. **Immutability is enforced in the application.** Audit and ledger collections are append-only through the app (Mongoose hooks, insert/read-only repositories, tested). Someone with raw database credentials could still change them; production hardening would use a database role without update/delete rights.
+8. **MongoDB has no foreign keys.** References are checked in the service layer and by indexes/validators.
+9. **Sessions.** The JWT is renewed on each authenticated request (sliding 15 minutes). There is no refresh-token rotation and no server-side revocation list; logging out clears the cookie.
+10. **Reports.** Fee summary and reconciliation, attendance summaries and section performance exist. There are no CSV exports and no fee aging report.
+11. **Accessibility.** Semantic tables, labels and focus styles are used, but there are no automated accessibility (axe) checks.
+12. **End-to-end tests are not in CI.** Playwright tests run locally (`npm run test:e2e`); CI runs lint, typecheck, API tests with coverage, and build.
+13. **Single timezone.** One school timezone (`SCHOOL_TIMEZONE`) is used for attendance dates.

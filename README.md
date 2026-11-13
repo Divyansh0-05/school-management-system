@@ -2,108 +2,111 @@
 
 [![CI](https://github.com/Divyansh0-05/school-management-system/actions/workflows/ci.yml/badge.svg)](https://github.com/Divyansh0-05/school-management-system/actions/workflows/ci.yml)
 
-A full-stack School Management System built as a modular monolith to streamline and automate day-to-day school operations. The platform enables academic institutions to manage core master data (classes, sections, subjects, teachers, students, and guardians), record session-based daily attendance with strict idempotency and concurrency controls, conduct examinations with pure-function grading rules and printable report cards, process fee billing with an append-only ledger of signed entries and simulated multi-method payments, and enforce strict server-side role-based access control across administrators, teachers, and guardians.
+A full-stack School Management System for administrators, teachers and guardians: master data, daily attendance, exams with grading and report cards, and fee invoicing with an append-only ledger and simulated payments. Access control is enforced on the server for every request.
 
-## Planned Tech Stack
+**Live demo:** https://school-management-system-three-murex.vercel.app
+**API docs (Swagger):** `https://school-management-api-iic4.onrender.com/api/docs` · **OpenAPI file:** [`docs/openapi.json`](docs/openapi.json)
+**Demo video:** `<VIDEO_URL>`
 
-- **Frontend:** [Next.js](https://nextjs.org/) (App Router), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/) (Radix UI primitives for accessible design), and [TanStack Query](https://tanstack.com/query/latest)
-- **Backend:** [Node.js](https://nodejs.org/) (v20+) with [Express](https://expressjs.com/), [TypeScript](https://www.typescriptlang.org/), designed with a strict layered architecture (`routes → controllers → services → repositories`)
-- **Database & Persistence:** [MongoDB](https://www.mongodb.com/) (Atlas M0 for cloud deployment; local single-node replica set `rs0` for multi-document ACID transactions) with [Mongoose](https://mongoosejs.com/) ODM and `$jsonSchema` collection validators
-- **Shared Contracts:** [Zod](https://zod.dev/) schemas in a shared package for end-to-end type safety and validation
-- **Testing & Quality:** [Vitest](https://vitest.dev/) (unit and integration tests), [Supertest](https://github.com/ladjs/supertest) against a real MongoDB replica set, [Playwright](https://playwright.dev/) for end-to-end journey tests with automated axe accessibility checks, and [GitHub Actions](https://github.com/features/actions) CI
+> The API runs on a free Render instance and sleeps after inactivity. The first request can take 30–60 seconds; later requests are fast.
 
-## Planned Features
+## Tech stack
 
-- **Academic Administration:** Comprehensive management of students, guardians, teacher profiles, academic years, classes, sections, subjects, student enrollments, and teacher-subject-section assignments.
-- **Attendance Management:** Daily session-based attendance tracking (Morning and Afternoon), idempotent bulk recording, duplicate submission protection, teacher editing windows, and aggregate attendance summaries for sections and students.
-- **Exams and Results:** Exam lifecycle management (`DRAFT → MARKS_OPEN → LOCKED → PUBLISHED`), subject-wise marks entry, immutable grading scheme snapshotting upon lock, pure-function grade calculations without floating-point errors, dense ranking, and printable student report cards.
-- **Fees & Simulated Payments:** Invoicing with itemized fee heads, section-wide bulk invoice generation, an append-only ledger of signed entries, idempotent simulated payments (Card, UPI, Cash) with version-checked atomic updates inside transactions, and automated reconciliation reports.
-- **Role-Based Access Control (RBAC):** Centralized server-side authorization policies with scoped repository queries for Administrator, Teacher, and Guardian roles (returning 404 for out-of-scope records to prevent data-existence leakage).
-- **Reports & Dashboards:** Dedicated dashboards for each user role, section performance analysis, fee collection and aging summaries, with on-demand CSV exports.
-- **Audit Trail:** Immutable, append-only audit logging recording actor, role, timestamp, entity state before/after, IP, and request ID within the same database transaction as the business operation.
+| Layer | Choice |
+|---|---|
+| Frontend | Next.js 14 (App Router), TypeScript, Tailwind CSS, TanStack Query |
+| Backend | Node.js 20, Express 4, TypeScript, layered: routes → controllers → services → repositories |
+| Database | MongoDB 7 (Atlas M0 in production; local single-node replica set `rs0` for transactions), Mongoose 8, `$jsonSchema` validators, `migrate-mongo` migrations |
+| Shared | `packages/shared`: Zod schemas and constants used by API and web |
+| Testing | Vitest + Supertest against a real MongoDB replica set (115 tests), Playwright end-to-end tests, GitHub Actions CI |
+| Hosting | Vercel (web), Render (API), MongoDB Atlas (database) |
 
-## Status
+The web app proxies `/api/*` to the API through a Next.js rewrite, so the session cookie is same-origin.
 
-This project is under active development. Below is the project phase roadmap:
+## Features
 
-- [x] **Phase 0:** Bootstrap (Monorepo, Docker Compose MongoDB replica set, Express & Next.js skeletons, CI)
-- [ ] **Phase 1:** Data Model, Auth, RBAC, Audit, and Master Data (Part 1A: Data model, Auth, Scoping, and Audit complete; Part 1B: Master data CRUD and Admin UI next)
-- [ ] **Phase 2:** Attendance Management & Acceptance Tests (A1, A2)
-- Attendance API: `GET /api/v1/sections`, section students/attendance reads, idempotent bulk `PUT /api/v1/sections/:id/attendance`, single `POST /api/v1/attendance`, and attendance reports/summaries.
-- [ ] **Phase 3:** Exams, Grading Engine & Report Cards (A3)
-- [ ] **Phase 4:** Fees, Invoices, Append-Only Ledger & Payments (A5)
-- [ ] **Phase 5:** Guardian Portal, Dashboards, Reports & Accessibility (A4)
-- [ ] **Phase 6:** Hardening, Security, E2E Testing & Production Deployment
-- [ ] **Phase 7:** Documentation, Verification, Test Evidence & Final Submission Prep
+- **Master data (admin):** students, guardians, teachers, academic years, classes, sections, subjects, enrollments, teacher assignments, class subjects, fee heads, grading schemes. Paginated, searchable, validated, audited.
+- **Attendance:** morning/afternoon sessions, idempotent bulk save (`PUT /sections/:id/attendance`), duplicate single record rejected with 409, teacher edit window, section and student summaries. School-local calendar dates.
+- **Exams and results:** state machine `DRAFT → MARKS_OPEN → LOCKED → PUBLISHED`, per-subject marks entry, grading scheme snapshot taken on lock, integer-only grade math, dense ranking, printable report cards, section performance summary.
+- **Fees:** itemised invoices, bulk generation per section, issue/void, append-only signed ledger, simulated card/UPI payments (success or failure) and cash receipts, idempotent payments via `Idempotency-Key`, fee summary and reconciliation reports.
+- **Access control:** roles ADMIN, TEACHER, GUARDIAN. 401 unauthenticated, 403 wrong role, 404 for records outside the user's scope (no existence leak).
+- **Audit trail:** append-only audit log written in the same transaction as the change; admin audit log viewer.
+- **Security:** bcrypt (cost 12), httpOnly SameSite cookie session with a sliding 15-minute token, login lockout after 5 failures, login rate limiting, helmet, request-id logging with secret redaction.
 
-## Setup & Quick Start
+## Acceptance criteria
 
-Ensure [Node.js](https://nodejs.org/) (v20+) and [Docker Desktop](https://www.docker.com/) are installed and running.
+| ID | Criterion | Evidence |
+|---|---|---|
+| A1 | Teacher accesses only assigned classes and records attendance | `attendance.test.ts`, e2e `attendance.spec.ts` |
+| A2 | Duplicate attendance rejected or safely updated | `attendance.test.ts` (idempotent bulk, 409 on duplicate, 50 concurrent requests) |
+| A3 | Exam result computed from configured marks and grading rules | `grading.test.ts`, `exams.test.ts` |
+| A4 | Guardian sees only linked student data | `guardian-scoping.test.ts`, `students-scoping.test.ts` |
+| A5 | Fee due and paid totals reconcile with the ledger | `fees.test.ts`, reconciliation report |
+
+Full matrix: [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md).
+
+## Run locally
+
+Requires Node.js 20+ and Docker Desktop.
 
 ```bash
-# 1. Clone repository & configure environment variables
 cp .env.example .env
-
-# 2. Start local MongoDB single-node replica set (rs0)
-npm run docker:db:up
-
-# 3. Install dependencies and build shared packages
-npm run setup
-
-# 4. Apply database migrations ($jsonSchema validators and compound indexes)
-npm run db:migrate
-
-# 5. Seed database with deterministic demo dataset
-npm run db:seed
-
-# 6. Run test suites (unit and integration tests against real replica set)
-npm run test
-
-# 7. Start development servers concurrently (API on :5000, Web on :3000)
-npm run dev
-
-# (Optional) Reset database: drops collections, re-runs migrations and re-seeds
-npm run db:reset
+npm run docker:db:up     # MongoDB replica set (dev :27017, test :27018)
+npm run setup            # install + build shared package
+npm run db:migrate       # validators and indexes
+npm run db:seed          # demo data
+npm run dev              # API :5000, web :3000
 ```
 
-### Interactive API Documentation (Swagger / OpenAPI)
+Other commands:
 
-Once the backend is running, the interactive OpenAPI documentation is accessible at:
-- **Swagger UI:** [http://localhost:5000/api/docs](http://localhost:5000/api/docs)
-- **OpenAPI 3.1 JSON Spec:** `docs/openapi.json`
+```bash
+npm run test             # API unit + integration tests (needs Docker DB)
+npm run test:e2e         # Playwright end-to-end tests
+npm run lint && npm run typecheck && npm run build
+npm run db:reset         # DESTRUCTIVE: drops collections, re-migrates, re-seeds (local use only)
+```
 
-### Demo Credentials
+## Demo accounts
 
-All seed accounts are initialized with the default password: `Demo@12345`
+Password for all: `Demo@12345` (demo data only).
 
-| Role | Email | Password | Persona & Permitted Scope |
-|---|---|---|---|
-| **Administrator** | `admin@school.demo` | `Demo@12345` | Full system access. Can view all 60 students across all sections, manage users, and inspect audit logs. |
-| **Teacher (Multi-Section)** | `teacher1@school.demo` | `Demo@12345` | Assigned to sections 6A and 7A. Scoped queries allow viewing exactly 20 students in those sections. |
-| **Teacher (Single-Section)** | `teacher2@school.demo` | `Demo@12345` | Assigned strictly to section 6A Math. Scoped queries allow viewing only the 10 students in 6A. |
-| **Guardian (Multi-Child)** | `guardian1@school.demo` | `Demo@12345` | Parent linked to 2 enrolled students (Student 1 and Student 2). |
-| **Guardian (Single-Child)** | `guardian2@school.demo` | `Demo@12345` | Parent linked to 1 enrolled student (Student 3). |
-
-### Environment Variables
-
-| Variable | Description | Default |
+| Role | Email | Scope |
 |---|---|---|
-| `NODE_ENV` | Runtime environment (`development`, `test`, `production`) | `development` |
-| `PORT` | API server listen port | `5000` |
-| `API_URL` | Base URL of the Express API backend | `http://localhost:5000` |
-| `WEB_URL` | Base URL of the Next.js frontend | `http://localhost:3000` |
-| `MONGODB_URI` | MongoDB connection string (requires replicaSet `rs0`) | `mongodb://localhost:27017/school_management?replicaSet=rs0` |
-| `MONGODB_TEST_URI` | Dedicated test database connection string | `mongodb://localhost:27018/school_management_test?replicaSet=rs0` |
-| `JWT_SECRET` | Secret key for signing authentication JWTs | required in production |
-| `JWT_EXPIRES_IN` | Access token lifespan | `15m` |
-| `REFRESH_TOKEN_SECRET` | Secret key for refresh tokens | required in production |
-| `REFRESH_TOKEN_EXPIRES_IN`| Refresh token lifespan | `7d` |
-| `COOKIE_SECRET` | Secret key for signed cookies | required in production |
-| `MAX_FAILED_LOGIN_ATTEMPTS` | Failed login attempts before account lockout | `5` |
-| `LOCKOUT_DURATION_MINUTES` | Lockout duration in minutes | `15` |
-| `ATTENDANCE_EDIT_WINDOW_DAYS` | Days within which teachers can modify attendance | `2` |
-| `SCHOOL_TIMEZONE` | Timezone for day-boundary calculations | `Asia/Kolkata` |
+| Admin | `admin@school.demo` | Everything |
+| Teacher | `teacher1@school.demo` | Sections 6A and 7A |
+| Teacher | `teacher2@school.demo` | Section 6A only |
+| Guardian | `guardian1@school.demo` | Two linked children |
+| Guardian | `guardian2@school.demo` | One linked child |
 
-## AI Assistance
+## Environment variables
 
-This project is built with the help of an AI coding agent under the author's direction, supervision, and active architectural review. Full details regarding AI tooling, prompting workflows, and human review protocols will be added in the final README.
+| Variable | Purpose | Default |
+|---|---|---|
+| `NODE_ENV` | `development`, `test`, `production` | `development` |
+| `PORT` | API port | `5000` |
+| `API_URL` | API base URL used by the web rewrite (build time, no trailing slash) | `http://localhost:5000` |
+| `WEB_URL` | Web origin, used for CORS | `http://localhost:3000` |
+| `MONGODB_URI` | MongoDB connection string | local replica set |
+| `MONGODB_TEST_URI` | Test database | local test replica set |
+| `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `COOKIE_SECRET` | Secrets (set strong values in production) | dev defaults |
+| `JWT_EXPIRES_IN` | Session token lifetime | `15m` |
+| `AUTH_MAX_FAILED_LOGINS` | Failures before lockout | `5` |
+| `AUTH_LOCKOUT_MINUTES` | Lockout duration | `15` |
+| `ATTENDANCE_EDIT_WINDOW_DAYS` | Teacher edit window | `2` |
+| `SCHOOL_TIMEZONE` | Day boundary timezone | `Asia/Kolkata` |
+| `ALLOW_DEMO_SEED` | Allow seeding when `NODE_ENV=production` | unset |
+
+No real secrets are committed; only `.env.example`.
+
+## Deployment
+
+Vercel (root `apps/web`, `API_URL` set to the Render URL) → Render (Node web service, health check `/api/health`) → MongoDB Atlas M0. Steps are in [`docs/DEPLOYMENT.md`](docs/SUBMISSION.md).
+
+## Documentation
+
+[Architecture](docs/ARCHITECTURE.md) · [Decisions (ADRs)](docs/DECISIONS.md) · [ER diagram](docs/ER_DIAGRAM.md) · [Acceptance matrix](docs/ACCEPTANCE.md) · [Known limitations](docs/KNOWN_LIMITATIONS.md) · [Technical report](docs/TECHNICAL_REPORT.md) · [Phase walkthroughs](docs/walkthrough)
+
+## AI assistance
+
+AI coding assistants (Google Antigravity and GitHub Copilot, using Claude and other models) were used to generate and iterate on large parts of the code, tests and documentation. I defined the requirements, architecture and data model, directed the work in phases (one branch and pull request per phase, CI on every PR), reviewed the output, ran the tests, deployed the system, and fixed defects found during manual testing on the live site. I can walk through and modify any part of the code. Working on this project helped me understand how things work in a real-world development environment. I learned a lot while building, testing, debugging and deploying it. There were challenges along the way, but solving them helped me improve my understanding of full-stack development.
