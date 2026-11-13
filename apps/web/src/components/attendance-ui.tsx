@@ -36,7 +36,7 @@ export function SectionCards({ sections, basePath }: { sections: Section[]; base
 }
 
 export function TeacherSections({ basePath = '/teacher/sections' }: { basePath?: string }) {
-  const query = useQuery({ queryKey: ['attendance-sections'], queryFn: () => apiRequest<{ data: Section[] }>('/sections') });
+  const query = useQuery({ queryKey: ['attendance-sections'], queryFn: () => apiRequest<{ data: Section[] }>('/attendance/sections') });
   return <section><p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Attendance</p><h1 className="mt-1 text-3xl font-bold">My classes</h1><p className="mt-2 text-slate-600">Record attendance for sections assigned to you.</p>{query.isLoading ? <div className="mt-8 h-32 animate-pulse rounded-2xl bg-slate-200" /> : query.isError ? <RetryState onRetry={() => query.refetch()} /> : <div className="mt-8"><SectionCards sections={query.data?.data || []} basePath={basePath} /></div>}</section>;
 }
 
@@ -55,7 +55,7 @@ export function AttendanceSheet({ admin = false }: { admin?: boolean }) {
   const [message, setMessage] = useState('');
   const [range, setRange] = useState({ from: today(), to: today() });
   const sectionQuery = useQuery({ queryKey: ['attendance-section', params.id], queryFn: async () => {
-    const response = await apiRequest<{ data: Section[] }>('/sections');
+    const response = await apiRequest<{ data: Section[] }>('/attendance/sections');
     const section = response.data.find((item) => item._id === params.id);
     if (!section) throw Object.assign(new Error('Section not found'), { problem: { status: 404 } });
     return { data: section };
@@ -96,7 +96,7 @@ export function AttendanceSheet({ admin = false }: { admin?: boolean }) {
 }
 
 export function AdminAttendance() {
-  const query = useQuery({ queryKey: ['attendance-sections-admin'], queryFn: () => apiRequest<{ data: Section[] }>('/sections') });
+  const query = useQuery({ queryKey: ['attendance-sections-admin'], queryFn: () => apiRequest<{ data: Section[] }>('/attendance/sections') });
   return <section><p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Attendance</p><h1 className="mt-1 text-3xl font-bold">All sections</h1><p className="mt-2 text-slate-600">Review and manage attendance for any section.</p><div className="mt-8">{query.isLoading ? <div className="h-32 animate-pulse rounded-2xl bg-slate-200" /> : query.isError ? <RetryState onRetry={() => query.refetch()} /> : <SectionCards sections={query.data?.data || []} basePath="/admin/attendance" />}</div></section>;
 }
 

@@ -12,7 +12,7 @@ const rejectGuardianWrite = (req: import('express').Request, _res: import('expre
   if (req.user?.role === UserRole.GUARDIAN) return next(new ForbiddenError('Guardians cannot record attendance', 'ROLE_NOT_PERMITTED'));
   next();
 };
-attendanceRouter.get('/sections', attendanceController.listSections);
+attendanceRouter.get('/attendance/sections', attendanceController.listSections);
 attendanceRouter.get('/sections/:id/students', validate({ params: IdParamsSchema }), attendanceController.sectionStudents);
 attendanceRouter.get('/sections/:id/attendance', validate({ params: IdParamsSchema, query: AttendanceDateQuerySchema }), attendanceController.getAttendance);
 attendanceRouter.put('/sections/:id/attendance', rejectGuardianWrite, validate({ params: IdParamsSchema, body: AttendanceBulkBodySchema }), attendanceController.putAttendance);
