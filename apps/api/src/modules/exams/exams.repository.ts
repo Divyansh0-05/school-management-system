@@ -7,6 +7,7 @@ import { TeacherAssignment } from '../../models/TeacherAssignment.js';
 import { StudentGuardian } from '../../models/StudentGuardian.js';
 import { GradingScheme } from '../../models/GradingScheme.js';
 import { Student } from '../../models/Student.js';
+import { Subject } from '../../models/Subject.js';
 import { AcademicYear } from '../../models/AcademicYear.js';
 import { Class } from '../../models/Class.js';
 
@@ -42,5 +43,7 @@ export const examsRepository = {
   academicYear: (id: string) => AcademicYear.findById(id).lean(),
   classRecord: (id: string) => Class.findById(id).lean(),
   student: (id: string) => Student.findById(id).lean(),
+  subjectsByIds: (ids: unknown[], session?: ClientSession) => Subject.find({ _id: { $in: ids } }).session(session || null).lean(),
+  studentsByIds: (ids: unknown[], session?: ClientSession) => Student.find({ _id: { $in: ids } }).session(session || null).lean(),
   classSubject: (classId: string, subjectId: string, session?: ClientSession) => import('../../models/ClassSubject.js').then(({ ClassSubject }) => ClassSubject.exists({ class_id: classId, subject_id: subjectId }).session(session || null)),
 };

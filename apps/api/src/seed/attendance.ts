@@ -6,13 +6,13 @@ import { Teacher } from '../models/Teacher.js';
 import { AttendanceSession, AttendanceStatus } from '@school/shared';
 import { Types } from 'mongoose';
 
-function schoolDaysBeforeToday(count: number) {
+function schoolDaysRelativeToday(count: number) {
   const dates: string[] = [];
   const cursor = new Date();
   cursor.setHours(0, 0, 0, 0);
   while (dates.length < count) {
-    cursor.setDate(cursor.getDate() - 1);
     if (cursor.getDay() !== 0 && cursor.getDay() !== 6) dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() - 1);
   }
   return dates.reverse();
 }
@@ -25,7 +25,7 @@ export async function seedAttendance(academicYear: IAcademicYear, teachers: ITea
   const teacherDocs = await Teacher.find({ _id: { $in: teacherIds } }).lean();
   const userByTeacher = new Map(teacherDocs.map((teacher) => [teacher._id.toString(), teacher.user_id.toString()]));
   assignments.forEach((assignment) => teacherBySection.set(assignment.section_id.toString(), userByTeacher.get(assignment.teacher_id.toString()) || teachers[0].user_id.toString()));
-  const dates = schoolDaysBeforeToday(20);
+  const dates = schoolDaysRelativeToday(30);
   const operations = enrollments.flatMap((enrollment) => {
     const marker = teacherBySection.get(enrollment.section_id.toString()) || teachers[0].user_id.toString();
     return dates.flatMap((date, day) => [AttendanceSession.MORNING, AttendanceSession.AFTERNOON].map((session) => {

@@ -63,7 +63,7 @@ export function UserShell({ children, user, navLinks }: UserShellProps) {
           </div>
         </div>
       </header>
-      <main className="p-4 sm:p-8">{children}</main>
+      <main className="mx-auto max-w-6xl p-4 sm:p-8">{children}</main>
     </div>
   );
 }

@@ -23,6 +23,15 @@ export class ExamsService {
   async get(id: string) {
     const exam = await examsRepository.find(id);
     if (!exam) throw new NotFoundError('Exam was not found');
+    const subjectIds = (exam.exam_subjects || []).map((s) => s.subject_id);
+    if (subjectIds.length) {
+      const subjects = await examsRepository.subjectsByIds(subjectIds);
+      const subjectMap = new Map(subjects.map((s) => [s._id.toString(), s.name]));
+      exam.exam_subjects = exam.exam_subjects.map((s) => ({
+        ...s,
+        subject_name: subjectMap.get(s.subject_id.toString()) || 'Subject',
+      }));
+    }
     return exam;
   }
   private async normalizedInput(input: ExamCreate) {
@@ -123,8 +132,26 @@ export class ExamsService {
     const subject = exam.exam_subjects.find((item) => item.subject_id.toString() === subjectId);
     if (!subject) throw new NotFoundError('Exam subject was not found');
     const enrollments = await examsRepository.enrollments(exam.class_id.toString(), sectionId);
-    const marks = await examsRepository.marks(examId, subjectId, enrollments.map((item) => item.student_id.toString()));
-    return enrollments.map((enrollment) => ({ studentId: enrollment.student_id, marks: marks.find((item) => item.student_id.toString() === enrollment.student_id.toString()) || null }));
+    const studentIds = enrollments.map((item) => item.student_id.toString());
+    const [marks, students, subjects] = await Promise.all([
+      examsRepository.marks(examId, subjectId, studentIds),
+      examsRepository.studentsByIds(studentIds),
+      examsRepository.subjectsByIds([subjectId]),
+    ]);
+    const studentMap = new Map(students.map((s) => [s._id.toString(), s]));
+    const subjectName = subjects[0]?.name || (subject as { subject_name?: string })?.subject_name || 'Subject';
+    return enrollments.map((enrollment) => {
+      const student = studentMap.get(enrollment.student_id.toString());
+      return {
+        studentId: enrollment.student_id,
+        student_name: student?.full_name || 'Student',
+        admission_no: student?.admission_no || '',
+        roll_no: enrollment.roll_no,
+        subject_id: subjectId,
+        subject_name: subjectName,
+        marks: marks.find((item) => item.student_id.toString() === enrollment.student_id.toString()) || null,
+      };
+    });
   }
   async putMarks(actor: AuthTokenPayload, examId: string, subjectId: string, sectionId: string, body: MarksBody, requestId: string, ip: string) {
     if (actor.role === UserRole.GUARDIAN) throw new ForbiddenError('Guardians cannot enter marks', 'ROLE_NOT_PERMITTED');
@@ -153,11 +180,35 @@ export class ExamsService {
     if (actor.role === UserRole.GUARDIAN) throw new ForbiddenError('Guardians cannot view section results', 'ROLE_NOT_PERMITTED');
     const exam = await this.scopedExam(actor, examId, sectionId);
     const enrollments = await examsRepository.enrollments(exam.class_id.toString(), sectionId);
-    const marks = await examsRepository.allMarks(examId, enrollments.map((item) => item.student_id.toString()));
+    const studentIds = enrollments.map((item) => item.student_id.toString());
+    const subjectIds = exam.exam_subjects.map((item) => item.subject_id.toString());
+    const [marks, students, subjects] = await Promise.all([
+      examsRepository.allMarks(examId, studentIds),
+      examsRepository.studentsByIds(studentIds),
+      examsRepository.subjectsByIds(subjectIds),
+    ]);
+    const studentMap = new Map(students.map((s) => [s._id.toString(), s]));
+    const subjectMap = new Map(subjects.map((s) => [s._id.toString(), s.name]));
     const bands = (exam.grading_snapshot || await examsRepository.scheme(exam.grading_scheme_id.toString())) as unknown as { grading_bands?: GradingBand[] };
     const results = enrollments.map((enrollment) => {
-      const graded = gradeMarks(exam.exam_subjects.map((item) => ({ subjectId: item.subject_id.toString(), maxMarks: item.max_marks, passMarks: item.pass_marks })), marks.filter((mark) => mark.student_id.toString() === enrollment.student_id.toString()).map((mark) => ({ subjectId: mark.subject_id.toString(), marks: mark.marks_obtained, isAbsent: mark.is_absent })), bands.grading_bands || bands as unknown as GradingBand[]);
-      return { studentId: enrollment.student_id, ...graded };
+      const graded = gradeMarks(
+        exam.exam_subjects.map((item) => ({ subjectId: item.subject_id.toString(), maxMarks: item.max_marks, passMarks: item.pass_marks })),
+        marks.filter((mark) => mark.student_id.toString() === enrollment.student_id.toString()).map((mark) => ({ subjectId: mark.subject_id.toString(), marks: mark.marks_obtained, isAbsent: mark.is_absent })),
+        bands.grading_bands || bands as unknown as GradingBand[]
+      );
+      const student = studentMap.get(enrollment.student_id.toString());
+      const subjectsWithNames = graded.subjects.map((s) => ({
+        ...s,
+        subject_name: subjectMap.get(s.subjectId) || 'Subject',
+      }));
+      return {
+        studentId: enrollment.student_id,
+        student_name: student?.full_name || 'Student',
+        admission_no: student?.admission_no || '',
+        roll_no: enrollment.roll_no,
+        ...graded,
+        subjects: subjectsWithNames,
+      };
     });
     const ranks = denseRanks(results.map((item) => item.total));
     return results.map((item, index) => ({ ...item, rank: item.result === 'INCOMPLETE' ? null : ranks[index], sectionStrength: results.length }));
@@ -177,10 +228,22 @@ export class ExamsService {
     const result = results.find((item) => item.studentId.toString() === studentId);
     if (!result) throw new NotFoundError('Report card was not found');
     const student = await examsRepository.student(studentId);
+    const subjectIds = result.subjects.map((s) => s.subjectId);
+    const subjects = await examsRepository.subjectsByIds(subjectIds);
+    const subjectMap = new Map(subjects.map((s) => [s._id.toString(), s.name]));
     return {
       student,
       exam,
-      subjects: result.subjects.map((subject) => ({ subjectId: subject.subjectId, marks: subject.obtained, maxMarks: subject.maxMarks, percent: subject.percent, grade: subject.grade, pass: subject.passes, absent: subject.absent })),
+      subjects: result.subjects.map((subject) => ({
+        subjectId: subject.subjectId,
+        subject_name: subjectMap.get(subject.subjectId) || (subject as { subject_name?: string })?.subject_name || 'Subject',
+        marks: subject.obtained,
+        maxMarks: subject.maxMarks,
+        percent: subject.percent,
+        grade: subject.grade,
+        pass: subject.passes,
+        absent: subject.absent,
+      })),
       total: result.total,
       maxTotal: result.maxTotal,
       overallPercent: result.overallPercent,
