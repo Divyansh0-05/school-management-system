@@ -41,7 +41,7 @@ const friendly = (error: unknown, invoiceStatus?: string) => {
     OVERPAYMENT: 'The payment is greater than the outstanding balance.',
     IDEMPOTENCY_KEY_REUSED: 'This payment attempt has already been processed with different details.',
   };
-  return map[code] || prob?.detail || (error as Error).message || 'Request failed.';
+  return map[code] || prob?.detail || (error as Error).message || 'Unable to complete request. Please try again.';
 };
 
 function mapInvoice(value: Invoice & { _id?: string }) {

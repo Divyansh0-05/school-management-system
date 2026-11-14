@@ -10,6 +10,7 @@ import { Student } from '../../models/Student.js';
 import { Subject } from '../../models/Subject.js';
 import { AcademicYear } from '../../models/AcademicYear.js';
 import { Class } from '../../models/Class.js';
+import { Teacher } from '../../models/Teacher.js';
 
 export const examsRepository = {
   list: (filter: Record<string, unknown>, page: number, pageSize: number) => Promise.all([
@@ -31,6 +32,10 @@ export const examsRepository = {
       return Enrollment.find({ section_id: { $in: ids } }).session(session || null).lean();
     });
   },
+  sectionsByClassId: (classId: string, session?: ClientSession) => Section.find({ class_id: classId }).sort({ name: 1 }).session(session || null).lean(),
+  enrollmentsBySectionIds: (sectionIds: unknown[], session?: ClientSession) => Enrollment.find({ section_id: { $in: sectionIds } }).sort({ roll_no: 1 }).session(session || null).lean(),
+  teacherAssignments: (filter: Record<string, unknown>, session?: ClientSession) => TeacherAssignment.find(filter).session(session || null).lean(),
+  teachersByIds: (ids: unknown[], session?: ClientSession) => Teacher.find({ _id: { $in: ids } }).session(session || null).lean(),
   section: (id: string, session?: ClientSession) => Section.findById(id).session(session || null).lean(),
   assignment: (teacherId: string, sectionId: string, subjectId: string, session?: ClientSession) => TeacherAssignment.exists({ teacher_id: teacherId, section_id: sectionId, subject_id: subjectId }).session(session || null),
   assignedClassIds: async (teacherId: string, session?: ClientSession) => {
