@@ -15,4 +15,6 @@ export const examsController = {
   results: async (req: Request, res: Response, next: NextFunction) => { try { res.json({ data: await examsService.results(actor(req), req.params.id, String(req.query.sectionId)) }); } catch (e) { next(e); } },
   reportCard: async (req: Request, res: Response, next: NextFunction) => { try { res.json({ data: await examsService.reportCard(actor(req), req.params.id, req.params.examId) }); } catch (e) { next(e); } },
   performance: async (req: Request, res: Response, next: NextFunction) => { try { res.json({ data: await examsService.sectionPerformance(actor(req), String(req.query.examId), String(req.query.sectionId)) }); } catch (e) { next(e); } },
+  marksProgress: async (req: Request, res: Response, next: NextFunction) => { try { res.json(await examsService.marksProgress(actor(req), req.params.id)); } catch (e) { next(e); } },
+  mySubjects: async (req: Request, res: Response, next: NextFunction) => { try { res.json({ data: await examsService.mySubjects(actor(req), req.params.id, String(req.query.sectionId)) }); } catch (e) { next(e); } },
 };

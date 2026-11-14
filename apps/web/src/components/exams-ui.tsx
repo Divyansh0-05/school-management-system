@@ -44,12 +44,30 @@ type ProblemError = Error & { problem?: ApiProblem };
 
 function errorText(error: unknown, fallback: string) {
   const code = (error as ProblemError).problem?.code;
-  if (code === 'INCOMPLETE_MARKS') return 'Lock requires marks or an explicit absence for every enrolled student and subject.';
-  if (code === 'INVALID_STATE_TRANSITION') return 'That exam action is not available in its current state.';
-  if (code === 'EDIT_WINDOW_CLOSED') return 'The marks edit window is closed.';
-  if ((error as ProblemError).problem?.status === 422) return 'Please correct the highlighted values and try again.';
-  return (error as ProblemError).problem?.detail || fallback;
+  if (code === 'INCOMPLETE_MARKS')
+    return 'Cannot lock yet: every student in the whole class needs marks (or Absent) for every subject. See the Marks progress panel below.';
+  if (code === 'INVALID_STATE_TRANSITION')
+    return "This action is not available in the exam's current state.";
+  if (code === 'EDIT_WINDOW_CLOSED')
+    return 'The marks edit window is closed.';
+  if ((error as ProblemError).problem?.status === 422)
+    return 'Please correct the highlighted values and try again.';
+  return (error as ProblemError).problem?.detail || (error as Error)?.message || fallback;
 }
+
+const EXAM_STEPS: Array<{ key: Exam['status']; label: string }> = [
+  { key: 'DRAFT', label: 'Draft' },
+  { key: 'MARKS_OPEN', label: 'Marks open' },
+  { key: 'LOCKED', label: 'Locked' },
+  { key: 'PUBLISHED', label: 'Published' },
+];
+
+const STEP_DESCRIPTIONS: Record<Exam['status'], string> = {
+  DRAFT: 'Draft: edit exam details and subjects. When ready for teachers to enter marks, open marks.',
+  MARKS_OPEN: 'Marks open: teachers enter marks for their sections. When every student has marks, lock the exam.',
+  LOCKED: 'Locked: results are final; publish to show report cards to guardians.',
+  PUBLISHED: 'Published: exam results and report cards are visible to guardians.',
+};
 
 function percent(value: number) {
   return `${(value / 100).toFixed(2)}%`;
@@ -88,7 +106,9 @@ export function ExamList({ role }: { role: 'ADMIN' | 'TEACHER' }) {
           <h1 className="mt-1 text-3xl font-bold">{role === 'ADMIN' ? 'Exam management' : 'My exams'}</h1>
           <p className="mt-1 text-slate-600">Review exam state, marks entry, results, and report cards.</p>
           {role === 'TEACHER' && (
-            <p className="mt-1 text-xs text-slate-500">Exams are created by administrators.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Exams are created and published by administrators. You enter marks for the sections and subjects you teach.
+            </p>
           )}
         </div>
         {role === 'ADMIN' && (
@@ -559,6 +579,31 @@ export function ExamDetail({ admin = false }: { admin?: boolean }) {
       }>(`/reports/academic/section-performance?examId=${params.id}&sectionId=${sectionId}`),
   });
 
+  type MarksProgressRow = {
+    section_id: string;
+    section_name: string;
+    subject_id: string;
+    subject_name: string;
+    enrolled_count: number;
+    entered_count: number;
+    missing_students: string[];
+    teacher_name: string | null;
+  };
+
+  const marksProgress = useQuery({
+    queryKey: ['exam-marks-progress', params.id],
+    enabled: Boolean(admin && params.id),
+    queryFn: () =>
+      apiRequest<{
+        data: MarksProgressRow[];
+        meta: {
+          ready_to_lock: boolean;
+          missing_students_count: number;
+          total_missing_marks: number;
+        };
+      }>(`/exams/${params.id}/marks-progress`),
+  });
+
   const action = useMutation({
     mutationFn: (name: string) =>
       apiRequest(`/exams/${params.id}/${name}`, {
@@ -568,8 +613,18 @@ export function ExamDetail({ admin = false }: { admin?: boolean }) {
     onSuccess: () => {
       notify('Exam state updated');
       client.invalidateQueries({ queryKey: ['exam', params.id] });
+      client.invalidateQueries({ queryKey: ['exam-marks-progress', params.id] });
     },
     onError: (error) => notify(errorText(error, 'Could not change exam state.'), 'error'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest(`/exams/${params.id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      notify('Exam deleted');
+      router.push('/admin/exams');
+    },
+    onError: (error) => notify(errorText(error, 'Could not delete exam.'), 'error'),
   });
 
   if (exam.isLoading) return <div className="h-48 animate-pulse rounded-2xl bg-slate-200" />;
@@ -579,6 +634,8 @@ export function ExamDetail({ admin = false }: { admin?: boolean }) {
   }
 
   const value = exam.data.data;
+  const isReadyToLock = marksProgress.data?.meta?.ready_to_lock ?? false;
+  const missingCount = marksProgress.data?.meta?.missing_students_count ?? 0;
 
   return (
     <section className="space-y-6">
@@ -588,6 +645,57 @@ export function ExamDetail({ admin = false }: { admin?: boolean }) {
       >
         ← Back to exams
       </Link>
+
+      {admin ? (
+        <div className="rounded-2xl border bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2">
+            {EXAM_STEPS.map((step, idx) => {
+              const stepIndex = EXAM_STEPS.findIndex((s) => s.key === value.status);
+              const isCurrent = step.key === value.status;
+              const isPast = idx < stepIndex;
+              return (
+                <div key={step.key} className="flex min-w-[120px] flex-1 items-center gap-2">
+                  <div
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                      isCurrent
+                        ? 'bg-teal-700 text-white ring-4 ring-teal-100'
+                        : isPast
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    {isPast ? '✓' : idx + 1}
+                  </div>
+                  <span
+                    className={`text-sm ${
+                      isCurrent ? 'font-bold text-teal-900' : isPast ? 'font-semibold text-slate-800' : 'text-slate-400'
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                  {idx < EXAM_STEPS.length - 1 && (
+                    <div className={`h-0.5 flex-1 ${isPast ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-3 border-t pt-3 text-sm text-slate-600">
+            {STEP_DESCRIPTIONS[value.status]}
+          </p>
+        </div>
+      ) : (
+        <p className="text-sm text-slate-600">
+          Exams are created and published by administrators. You enter marks for the sections and subjects you teach.
+        </p>
+      )}
+
+      {(action.isError || deleteMutation.isError) && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-semibold">Action could not be completed</p>
+          <p className="mt-0.5">{errorText(action.error || deleteMutation.error, 'Request failed.')}</p>
+        </div>
+      )}
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
@@ -599,28 +707,61 @@ export function ExamDetail({ admin = false }: { admin?: boolean }) {
         <div className="flex items-center gap-2">
           <StatusBadge value={value.status} />
           {admin && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {value.status === 'DRAFT' && (
-                <button
-                  onClick={() => action.mutate('open')}
-                  className="rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-teal-800"
-                >
-                  Open marks
-                </button>
+                <>
+                  <button
+                    onClick={() => action.mutate('open')}
+                    disabled={action.isPending}
+                    className="rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
+                  >
+                    Open marks
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Delete this draft exam? This action cannot be undone.')) {
+                        deleteMutation.mutate();
+                      }
+                    }}
+                    disabled={deleteMutation.isPending}
+                    className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    {deleteMutation.isPending ? 'Deleting…' : 'Delete exam'}
+                  </button>
+                </>
               )}
               {value.status === 'MARKS_OPEN' && (
-                <button
-                  onClick={() => action.mutate('lock')}
-                  className="rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-teal-800"
-                >
-                  Lock
-                </button>
+                <div className="flex flex-col items-end gap-1">
+                  {marksProgress.isLoading ? (
+                    <span className="text-xs text-slate-500">Checking progress…</span>
+                  ) : isReadyToLock ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      Ready to lock
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      Not ready: {missingCount} {missingCount === 1 ? 'student' : 'students'} still missing marks
+                    </span>
+                  )}
+                  <button
+                    onClick={() => action.mutate('lock')}
+                    disabled={action.isPending || !isReadyToLock}
+                    title={!isReadyToLock ? `Cannot lock: ${missingCount} students still missing marks. Complete all marks first.` : undefined}
+                    className="rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Lock
+                  </button>
+                </div>
               )}
               {value.status === 'LOCKED' && (
                 <>
                   <button
                     onClick={() => action.mutate('publish')}
-                    className="rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-teal-800"
+                    disabled={action.isPending}
+                    className="rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
                   >
                     Publish
                   </button>
@@ -632,7 +773,8 @@ export function ExamDetail({ admin = false }: { admin?: boolean }) {
                         action.mutate('reopen');
                       }
                     }}
-                    className="rounded-lg border bg-white px-3 py-1.5 text-sm font-semibold hover:bg-slate-50"
+                    disabled={action.isPending}
+                    className="rounded-lg border bg-white px-3 py-1.5 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
                   >
                     Reopen
                   </button>
@@ -670,6 +812,103 @@ export function ExamDetail({ admin = false }: { admin?: boolean }) {
         >
           Edit draft
         </Link>
+      )}
+
+      {admin && (
+        <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <div className="border-b px-5 py-4">
+            <h2 className="text-lg font-bold text-slate-900">Marks progress</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Track marks entry across all sections, subjects, and teacher assignments.
+            </p>
+          </div>
+          {marksProgress.isLoading ? (
+            <div className="space-y-3 p-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-10 animate-pulse rounded bg-slate-100" />
+              ))}
+            </div>
+          ) : marksProgress.isError ? (
+            <div className="p-6 text-red-700" role="alert">
+              <p className="font-medium">{errorText(marksProgress.error, 'Could not load marks progress.')}</p>
+              <button
+                type="button"
+                onClick={() => marksProgress.refetch()}
+                className="mt-2 rounded-lg bg-red-100 px-3 py-1 font-semibold text-red-800 hover:bg-red-200"
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
+                  <tr>
+                    <th scope="col" className="px-4 py-3">Section</th>
+                    <th scope="col" className="px-4 py-3">Subject</th>
+                    <th scope="col" className="px-4 py-3">Entered / Total</th>
+                    <th scope="col" className="px-4 py-3">Teacher</th>
+                    <th scope="col" className="px-4 py-3">Missing</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(marksProgress.data?.data || []).length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                        No sections or subjects found for this exam.
+                      </td>
+                    </tr>
+                  ) : (
+                    marksProgress.data?.data.map((row) => {
+                      const isUnderfilled = row.entered_count < row.enrolled_count;
+                      const noTeacher = !row.teacher_name;
+                      const rowBg = noTeacher
+                        ? 'bg-red-50/70 hover:bg-red-50'
+                        : isUnderfilled
+                        ? 'bg-amber-50/60 hover:bg-amber-50'
+                        : 'hover:bg-slate-50';
+
+                      return (
+                        <tr key={`${row.section_id}-${row.subject_id}`} className={rowBg}>
+                          <td className="px-4 py-3 font-semibold text-slate-900">{row.section_name}</td>
+                          <td className="px-4 py-3 text-slate-700">{row.subject_name}</td>
+                          <td className="px-4 py-3">
+                            <span className={`font-medium ${isUnderfilled ? 'font-semibold text-amber-800' : 'text-emerald-700'}`}>
+                              {row.entered_count} / {row.enrolled_count}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {row.teacher_name ? (
+                              <span className="text-slate-800">{row.teacher_name}</span>
+                            ) : (
+                              <span className="font-semibold text-red-700">
+                                No teacher assigned: assign one under Teacher assignments
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-600">
+                            {row.missing_students.length > 0 ? (
+                              <span>
+                                {row.missing_students.join(', ')}
+                                {row.enrolled_count - row.entered_count > row.missing_students.length && (
+                                  <span className="text-slate-400">
+                                    {' '}+{row.enrolled_count - row.entered_count - row.missing_students.length} more
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="font-medium text-emerald-700">None (all entered)</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -771,15 +1010,34 @@ export function ExamDetail({ admin = false }: { admin?: boolean }) {
   );
 }
 
-export function MarksEntry({ exam, sectionId }: { exam: Exam; sectionId: string }) {
+export function MarksEntry({ exam: _exam, sectionId }: { exam?: Exam; sectionId: string }) {
   const params = useParams<{ id: string }>();
   const client = useQueryClient();
   const notify = useToast();
-  const [subjectId, setSubjectId] = useState(exam.exam_subjects[0]?.subject_id || '');
+
+  const mySubjectsQuery = useQuery({
+    queryKey: ['my-subjects', params.id, sectionId],
+    enabled: Boolean(sectionId),
+    queryFn: () =>
+      apiRequest<{ data: ExamSubject[] }>(`/exams/${params.id}/my-subjects?sectionId=${sectionId}`),
+  });
+
+  const allowedSubjects = mySubjectsQuery.data?.data || [];
+  const [subjectId, setSubjectId] = useState('');
+
+  useEffect(() => {
+    if (allowedSubjects.length > 0) {
+      if (!allowedSubjects.some((s) => s.subject_id === subjectId)) {
+        setSubjectId(allowedSubjects[0].subject_id);
+      }
+    } else {
+      setSubjectId('');
+    }
+  }, [allowedSubjects, subjectId]);
 
   const rows = useQuery({
     queryKey: ['marks', params.id, subjectId, sectionId],
-    enabled: Boolean(sectionId),
+    enabled: Boolean(sectionId && subjectId),
     queryFn: () =>
       apiRequest<{ data: MarkRow[] }>(
         `/exams/${params.id}/subjects/${subjectId}/marks?sectionId=${sectionId}`
@@ -820,6 +1078,7 @@ export function MarksEntry({ exam, sectionId }: { exam: Exam; sectionId: string 
       setSavedValues(values);
       notify('Marks saved');
       client.invalidateQueries({ queryKey: ['marks', params.id, subjectId, sectionId] });
+      client.invalidateQueries({ queryKey: ['exam-marks-progress', params.id] });
     },
     onError: (error) => notify(errorText(error, 'Could not save marks.'), 'error'),
   });
@@ -837,8 +1096,22 @@ export function MarksEntry({ exam, sectionId }: { exam: Exam; sectionId: string 
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
-  const currentSubject = exam.exam_subjects.find((subject) => subject.subject_id === subjectId);
+  if (mySubjectsQuery.isLoading) {
+    return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  }
+
+  if (allowedSubjects.length === 0) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
+        <p className="font-semibold">No assigned subjects</p>
+        <p className="mt-1">You are not assigned to any subject in this exam for this section.</p>
+      </div>
+    );
+  }
+
+  const currentSubject = allowedSubjects.find((subject) => subject.subject_id === subjectId) || allowedSubjects[0];
   const maxMarks = (currentSubject?.max_marks || 0) / 100;
+  const rowData = rows.data?.data || [];
 
   return (
     <div className="space-y-4 rounded-2xl border bg-white p-5 shadow-sm">
@@ -858,7 +1131,7 @@ export function MarksEntry({ exam, sectionId }: { exam: Exam; sectionId: string 
             onChange={(event) => setSubjectId(event.target.value)}
             className="mt-1 block w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
           >
-            {exam.exam_subjects.map((subject) => (
+            {allowedSubjects.map((subject) => (
               <option key={subject.subject_id} value={subject.subject_id}>
                 {formatSubjectName(subject, subject.subject_id)}
               </option>
@@ -874,6 +1147,21 @@ export function MarksEntry({ exam, sectionId }: { exam: Exam; sectionId: string 
               <div key={i} className="h-10 animate-pulse rounded bg-slate-100" />
             ))}
           </div>
+        ) : rows.isError ? (
+          <div className="p-6 text-red-700" role="alert">
+            <p className="font-medium">{errorText(rows.error, 'Could not load marks.')}</p>
+            <button
+              type="button"
+              onClick={() => rows.refetch()}
+              className="mt-2 rounded-lg bg-red-100 px-3 py-1 font-semibold text-red-800 hover:bg-red-200"
+            >
+              Retry
+            </button>
+          </div>
+        ) : rowData.length === 0 ? (
+          <div className="p-8 text-center text-slate-500">
+            No students enrolled in this section.
+          </div>
         ) : (
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
@@ -885,7 +1173,7 @@ export function MarksEntry({ exam, sectionId }: { exam: Exam; sectionId: string 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {(rows.data?.data || []).map((row) => (
+              {rowData.map((row) => (
                 <tr key={row.studentId} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-semibold text-slate-700">{row.roll_no ?? '—'}</td>
                   <td className="px-4 py-3">
@@ -940,7 +1228,7 @@ export function MarksEntry({ exam, sectionId }: { exam: Exam; sectionId: string 
 
       <div className="flex items-center gap-4">
         <button
-          disabled={mutation.isPending || !sectionId}
+          disabled={mutation.isPending || !sectionId || rowData.length === 0}
           onClick={() => mutation.mutate()}
           className="rounded-lg bg-teal-700 px-5 py-2 font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
         >

@@ -259,5 +259,122 @@ export class ExamsService {
     const distribution = complete.reduce<Record<string, number>>((acc, item) => { if (item.grade) acc[item.grade] = (acc[item.grade] || 0) + 1; return acc; }, {});
     return { averages: complete.length ? Math.floor(complete.reduce((sum, item) => sum + item.overallPercent, 0) / complete.length) : 0, passRate: complete.length ? Math.floor(complete.filter((item) => item.result === 'PASS').length * 10000 / complete.length) : 0, gradeDistribution: distribution, sectionStrength: results.length };
   }
+  async marksProgress(actor: AuthTokenPayload, id: string) {
+    this.admin(actor);
+    const exam = await examsRepository.find(id);
+    if (!exam) throw new NotFoundError('Exam was not found');
+
+    const sections = await examsRepository.sectionsByClassId(exam.class_id.toString());
+    const sectionIds = sections.map((s) => s._id);
+    const enrollments = await examsRepository.enrollmentsBySectionIds(sectionIds);
+
+    const enrollmentsBySection = new Map<string, typeof enrollments>();
+    for (const section of sections) {
+      enrollmentsBySection.set(section._id.toString(), []);
+    }
+    for (const enrollment of enrollments) {
+      const secId = enrollment.section_id.toString();
+      const list = enrollmentsBySection.get(secId);
+      if (list) list.push(enrollment);
+    }
+
+    const studentIds = [...new Set(enrollments.map((e) => e.student_id.toString()))];
+    const [students, subjects] = await Promise.all([
+      examsRepository.studentsByIds(studentIds),
+      examsRepository.subjectsByIds(exam.exam_subjects.map((s) => s.subject_id.toString())),
+    ]);
+    const studentMap = new Map(students.map((s) => [s._id.toString(), s.full_name || 'Student']));
+    const subjectMap = new Map(subjects.map((s) => [s._id.toString(), s.name]));
+
+    const marks = await examsRepository.allMarks(id, studentIds);
+    const enteredKeys = new Set(marks.map((m) => `${m.student_id.toString()}:${m.subject_id.toString()}`));
+
+    const subjectIds = exam.exam_subjects.map((s) => s.subject_id);
+    const assignments = await examsRepository.teacherAssignments({
+      section_id: { $in: sectionIds },
+      subject_id: { $in: subjectIds },
+    });
+    const teacherIds = [...new Set(assignments.map((a) => a.teacher_id.toString()))];
+    const teachers = await examsRepository.teachersByIds(teacherIds);
+    const teacherMap = new Map(teachers.map((t) => [t._id.toString(), t.full_name]));
+
+    const assignmentMap = new Map<string, string>();
+    for (const a of assignments) {
+      const tName = teacherMap.get(a.teacher_id.toString());
+      if (tName) assignmentMap.set(`${a.section_id.toString()}:${a.subject_id.toString()}`, tName);
+    }
+
+    const rows: Array<{
+      section_id: string;
+      section_name: string;
+      subject_id: string;
+      subject_name: string;
+      enrolled_count: number;
+      entered_count: number;
+      missing_students: string[];
+      teacher_name: string | null;
+    }> = [];
+
+    let totalMissingMarks = 0;
+    const missingStudentIds = new Set<string>();
+
+    for (const section of sections) {
+      const secId = section._id.toString();
+      const secEnrollments = enrollmentsBySection.get(secId) || [];
+      for (const examSubject of exam.exam_subjects) {
+        const subjId = examSubject.subject_id.toString();
+        const subjName = subjectMap.get(subjId) || 'Subject';
+        let entered = 0;
+        const missingNames: string[] = [];
+        for (const enrollment of secEnrollments) {
+          const stId = enrollment.student_id.toString();
+          if (enteredKeys.has(`${stId}:${subjId}`)) {
+            entered++;
+          } else {
+            totalMissingMarks++;
+            missingStudentIds.add(stId);
+            if (missingNames.length < 10) {
+              missingNames.push(studentMap.get(stId) || stId);
+            }
+          }
+        }
+        const teacherName = assignmentMap.get(`${secId}:${subjId}`) || null;
+        rows.push({
+          section_id: secId,
+          section_name: section.name,
+          subject_id: subjId,
+          subject_name: subjName,
+          enrolled_count: secEnrollments.length,
+          entered_count: entered,
+          missing_students: missingNames,
+          teacher_name: teacherName,
+        });
+      }
+    }
+
+    return {
+      data: rows,
+      meta: {
+        ready_to_lock: totalMissingMarks === 0 && exam.status === ExamStatus.MARKS_OPEN,
+        missing_students_count: missingStudentIds.size,
+        total_missing_marks: totalMissingMarks,
+      },
+    };
+  }
+  async mySubjects(actor: AuthTokenPayload, id: string, sectionId: string) {
+    if (actor.role === UserRole.GUARDIAN) throw new ForbiddenError('Guardians cannot access exam subjects', 'ROLE_NOT_PERMITTED');
+    const exam = await this.get(id);
+    if (actor.role === UserRole.ADMIN) return exam.exam_subjects;
+    if (actor.role === UserRole.TEACHER) {
+      if (!actor.teacherId) return [];
+      const assignments = await examsRepository.teacherAssignments({
+        teacher_id: actor.teacherId,
+        section_id: sectionId,
+      });
+      const assignedSubjectIds = new Set(assignments.map((a) => a.subject_id.toString()));
+      return exam.exam_subjects.filter((s) => assignedSubjectIds.has(s.subject_id.toString()));
+    }
+    return [];
+  }
 }
 export const examsService = new ExamsService();

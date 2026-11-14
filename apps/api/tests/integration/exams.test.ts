@@ -120,4 +120,29 @@ describe('exams API', () => {
       expect(sub.subject_name.length).toBeGreaterThan(0);
     }
   });
+
+  it('returns marks-progress for admin and enforces RBAC (401/403)', async () => {
+    const unauth = await request(app).get(`/api/v1/exams/${openExamId}/marks-progress`);
+    expect(unauth.status).toBe(401);
+
+    const forbidden = await request(app).get(`/api/v1/exams/${openExamId}/marks-progress`).set('Cookie', teacher1);
+    expect(forbidden.status).toBe(403);
+
+    const response = await request(app).get(`/api/v1/exams/${openExamId}/marks-progress`).set('Cookie', admin);
+    expect(response.status).toBe(200);
+    expect(response.body.data).toBeDefined();
+    expect(Array.isArray(response.body.data)).toBe(true);
+    expect(response.body.data.length).toBeGreaterThan(0);
+    const row = response.body.data[0];
+    expect(row).toHaveProperty('section_id');
+    expect(row).toHaveProperty('section_name');
+    expect(row).toHaveProperty('subject_id');
+    expect(row).toHaveProperty('subject_name');
+    expect(row).toHaveProperty('enrolled_count');
+    expect(row).toHaveProperty('entered_count');
+    expect(row).toHaveProperty('missing_students');
+    expect(row).toHaveProperty('teacher_name');
+    expect(response.body.meta).toBeDefined();
+    expect(response.body.meta).toHaveProperty('ready_to_lock');
+  });
 });

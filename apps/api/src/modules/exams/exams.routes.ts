@@ -9,6 +9,8 @@ export const examsRouter = Router();
 examsRouter.use(requireAuth);
 examsRouter.get('/exams', validate({ query: ExamQuerySchema }), examsController.list);
 examsRouter.get('/exams/:id', validate({ params: IdParamsSchema }), examsController.get);
+examsRouter.get('/exams/:id/marks-progress', validate({ params: IdParamsSchema }), examsController.marksProgress);
+examsRouter.get('/exams/:id/my-subjects', validate({ params: IdParamsSchema, query: z.object({ sectionId: IdParamsSchema.shape.id }) }), examsController.mySubjects);
 examsRouter.post('/exams', validate({ body: ExamCreateSchema }), examsController.create);
 examsRouter.patch('/exams/:id', validate({ params: IdParamsSchema, body: ExamUpdateSchema }), examsController.update);
 examsRouter.delete('/exams/:id', validate({ params: IdParamsSchema }), examsController.remove);

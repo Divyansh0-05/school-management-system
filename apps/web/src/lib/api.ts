@@ -13,7 +13,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   });
   if (!response.ok) {
     const problem = (await response.json().catch(() => ({}))) as ApiProblem;
-    const error = new Error(problem.detail || `Request failed (${response.status})`) as Error & { problem?: ApiProblem };
+    const error = new Error(problem.detail || `Request could not be completed (${response.status})`) as Error & { problem?: ApiProblem };
     error.problem = { ...problem, status: response.status };
     throw error;
   }
